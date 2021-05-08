@@ -1,0 +1,109 @@
+/*
+ * Credit to Spring 2020 CSE 331 server material, css for modifying user
+ * form input styling
+ */
+
+/*
+NOTE: This file is designed to help you just get a simple canvas with the correct
+settings, centered on the screen. If you'd like to modify this, you're totally
+welcome to do so. This is just to help you get something simple working first.
+ */
+
+/*
+This makes all <canvas> elements fill 90% of the width of whatever they're inside.
+We deliberately do not set the height here too - when we set canvas.width
+and canvas.height in UserForm.tsx, this 90% helps keep the canvas from being too big,
+but not setting the height means the image keeps the correct aspect ratio (it'll be set
+automatically to the correct thing).
+ */
+canvas {
+    width: 90%;
+    margin: 0 auto;
+    display: block;
+}
+
+/* Left-aligns the title text onto page. Also makes the text bigger, bold, and adds
+some space around the title and console font. :) */
+#app-title {
+    text-align: center;
+    color: purple;
+    font-size: 36px;
+    font-weight: bolder;
+    float: left;
+    margin-top: 5%;
+    margin-left: 11%;
+    font-family: "Courier New", Courier, monospace;
+    text-decoration: overline underline;
+    text-decoration-style: double;
+    text-shadow: 2px 2px gold;
+}
+
+/* Makes user-form and elements inside form div align center */
+#user-form {
+    display: inline-block;
+    text-align: center;
+    background-color: darkgoldenrod;
+    border-radius: 20px;
+}
+
+/* The div for the dropdowns, so they appear inline with some nice spacing and border and font */
+#dropdown {
+    width: 500px;
+    padding-right: 1%;
+    padding-left: 1%;
+    padding-bottom: 2%;
+    margin-top: 2%;
+    margin-bottom: 2%;
+    margin-left: 5%;
+    border-style: dashed;
+    border-radius: 10px;
+    background-color: rebeccapurple;
+    font-family: "Courier New", Courier, monospace;
+    font-weight: bold;
+    text-shadow: 2px 2px purple;
+    font-size: 18px;
+    text-align: left;
+}
+
+/* For spacing between dropdown and color */
+#country-dropdown {
+    margin-left: 2%;
+    margin-right: 5%;
+    color: gold;
+}
+
+/* For background color of dropdowns */
+select {
+    background-color: gold;
+    font-family: "Courier New", Courier, monospace;
+    font-weight: bold;
+    font-size: 14px;
+}
+
+/* For color change when hovering over drop down */
+select:hover {
+    background-color: yellow;
+}
+
+/* For background color of dropdown items */
+option {
+    background-color: goldenrod;
+    color: rebeccapurple;
+    font-weight: bold;
+}
+
+/* Font for all buttons */
+button {
+    font-family: "Courier New", Courier, monospace;
+    font-weight: bolder;
+    background-color: gold;
+    color: purple;
+    text-shadow: 1px 1px rebeccapurple;
+    font-size: 14px;
+    padding: 2%;
+}
+
+/* For changing color on buttons when hovered */
+button:hover {
+    background-color: yellow;
+}
