@@ -1,0 +1,3 @@
+rootProject.name = 'webTest'
+
+include 'website-server'
