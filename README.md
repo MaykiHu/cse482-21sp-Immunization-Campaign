@@ -10,8 +10,10 @@ Front End
 
 
 Back End
-*need python installed. 
-*Install modules: pyodbc, pandas, sqlalchemy
+* Need to install
+    * python
+    * python modules: pyodbc, pandas, sqlalchemy
+    * ODBC Driver for SQL Server
 *Need to be added to azure server
 
 1. Using terminal run backserver.py
