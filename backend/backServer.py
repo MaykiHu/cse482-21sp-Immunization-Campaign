@@ -11,6 +11,7 @@ class MyServer(BaseHTTPRequestHandler):
     def _set_headers(self):
         self.send_response(200)
         #self.send_header("Content-type", "text/json")
+        self.send_header('Access-Control-Allow-Origin', 'http://localhost:3000')
         self.end_headers()
 
     def do_GET(self):

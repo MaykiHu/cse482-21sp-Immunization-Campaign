@@ -14,8 +14,13 @@ interface UserFormProps {
 
 interface UserFormState {
     backgroundImage: HTMLImageElement | null,
-    countries: string[] // list of countries
-    startValue: string // the starting building in drop down
+    countries: string[]  // list of countries
+    districts: string[]  // list of districts (for a country)
+    checkedDistricts: Map<String, boolean>  // mapping of campaigned districts
+    countryValue: string  // the targeted country
+    vaccineCount: number | string,  // number of vaccines (saved as number)
+    covidFile: File | null,
+    generalFile: File | null,
 }
 
 class UserForm extends Component<UserFormProps, UserFormState> {
@@ -33,15 +38,20 @@ class UserForm extends Component<UserFormProps, UserFormState> {
         super(props);
         this.state = {
             backgroundImage: null,
-            countries: [],     // list of all the countries (populate it when loaded)
-            startValue: "Benin", // starting country to display
+            countries: [],  // list of all the countries (populate it when loaded)
+            districts: [],  // list of districts for a country
+            checkedDistricts: new Map(),
+            countryValue: "Choose a Country", // choose a country
+            vaccineCount: "",  // value on user input; placeholder
+            covidFile: null,  // given by user
+            generalFile: null,  // given by user
         };
         this.canvas = React.createRef();
     }
 
     componentDidMount() {
         this.fetchAndSaveImage();
-        this.fetchDropList();
+        this.fetchCountryDropList();
         this.drawBackgroundImage();
         this.redraw();
     }
@@ -52,7 +62,7 @@ class UserForm extends Component<UserFormProps, UserFormState> {
     }
 
     // redraws/refreshes visuals on screen (add other methods here like
-    // updating the excel preview of the form for example or list of districts)
+    // updating list of districts)
     redraw() {
         if (this.canvas.current === null) {
             throw new Error("Unable to access canvas.");
@@ -69,10 +79,11 @@ class UserForm extends Component<UserFormProps, UserFormState> {
             // uncomment when we have a background image, if any
             //ctx.drawImage(this.state.backgroundImage, 0, 0);
         }
+        this.fetchDistricts(this.state.countryValue);
     }
 
-    // Creates drop-down list of countries from the server data of campus buildings
-    fetchDropList() {
+    // Creates drop-down list of countries from the server data
+    fetchCountryDropList() {
         // Get the JSON info from server on countries, sorted alphabetically
         fetch("http://localhost:4567/countries")
             .then((res) => {
@@ -84,6 +95,42 @@ class UserForm extends Component<UserFormProps, UserFormState> {
                     countries: data.sort()
                 })
             });
+    }
+
+    // Fetches districts based on country select
+    fetchDistricts(countryValue : string) {
+        // Get the JSON info from server on districts, sorted alphabetically
+        // if country has been selected
+        if (countryValue !== "Choose a Country") {
+            if (countryValue === "Uganda") {
+                fetch("http://localhost:8080/districts")
+                    .then((res) => {
+                        return res.json();
+                    })
+                    // Parse and save the districts from JSON into an array
+                    .then(data => {
+                        let districts = data.District;
+                        var districtsArr = [];
+                        for (let i = 0; i < Object.keys(districts).length; i++) {
+                            districtsArr.push(districts[i]);
+                        }
+                        this.setState({
+                            districts: districtsArr,
+                        })
+                    });
+            } else {
+                fetch("http://localhost:4567/" + countryValue + "-districts")
+                    .then((res) => {
+                        return res.json();
+                    })
+                    // Save the districts
+                    .then(data => {
+                        this.setState({
+                            districts: data
+                        })
+                    });
+            }
+        }
     }
 
     fetchAndSaveImage() {
@@ -116,33 +163,156 @@ class UserForm extends Component<UserFormProps, UserFormState> {
         }
     }
 
-    // Updates the starting country value from the dropdown list
-    handleStartChange = (event: any) => {
+    // Updates the country value from the dropdown list
+    handleCountryChange = (event: any) => {
         this.setState({
-           startValue: event.target.value
+           countryValue: event.target.value,
+           checkedDistricts: new Map(),  // clear prev. country checkedDistricts
+        });
+        this.fetchDistricts(this.state.countryValue);  // update districts to this country
+    }
+
+    // Updates vaccine vaccine inventory info and validates input accordingly
+    handleVaccineCount = (event: any) => {
+        this.setState({
+            vaccineCount: event.target.value.replace(/^0+|\D/,'')
         });
     }
 
-    // Resets the program to make page as if freshly loaded
-    handleClearClick = (event: any) => {
-        this.setState({
-            startValue: "Benin", // Benin is starting country in drop down list
-        })
+    // Updates state of districts campaigned on or not
+    handleCheckboxPress = (event: any) => {
+        const hasCampaigned = event.target.checked;
+        const district = event.target.value;
+        this.setState(prevState => ({checkedDistricts: prevState.checkedDistricts.set(district, hasCampaigned)}));
+    }
+
+    // Checks and updates covid stats file given if valid type, alerts if not
+    handleCovidFile = (event: any) => {
+        if (event.target.files[0] !== undefined) {
+            const file = event.target.files;
+            const fileName = event.target.files[0].name;
+            if (fileName !== "covid_stats_template.csv") {
+                alert("Different file selected; please provide our covid_stats_template.csv");
+                this.setState({
+                    covidFile: null
+                });
+                return false;
+            }
+            this.setState({
+                covidFile: file[0]
+            });
+            console.log(file);
+            return true;
+        } else {  // no file provided
+            this.setState({
+                covidFile: null
+            });
+        }
+    }
+
+    // Checks and updates general stats file given if valid type, alerts if not
+    handleGeneralFile = (event: any) => {
+        if (event.target.files[0] !== undefined) {
+            const file = event.target.files;
+            const fileName = event.target.files[0].name;
+            if (fileName !== "general_stats_template.csv") {
+                alert("Different file selected; please provide our covid_stats_template.csv");
+                this.setState({
+                    generalFile: null
+                });
+                return false;
+            }
+            this.setState({
+                generalFile: file
+            });
+            return true;
+        } else {  // no file provided
+            this.setState({
+                generalFile: null
+            });
+        }
+    }
+
+    // Handles uploading attached covid file to server
+    handleSubmit = (event: any) => {
+        if (this!.state.covidFile !== null) {
+            const formData = new FormData()
+            formData.append('file', this.state.covidFile)
+            console.log(formData);
+            fetch('http://localhost:4567/saveCovidFile', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log(data)
+            })
+            .catch(error => {
+                console.error(error)
+            })
+        }
     }
 
     render() {
         return (
             <div id="user-form">
                 <p id="app-title">Campaign Planning</p>
-                <p><br></br><br></br><br></br><br></br><br></br></p>
                 <div id="dropdown">
                     <div id="country-dropdown">
-                        <p>Country of Interest</p>
-                        <select value={this.state.startValue} onChange={this.handleStartChange}>
-                            {this.state.countries.map((building) =>
-                                <option key={building} value={building}>{building}</option>)}
+                        <p id="category-title">Country of Interest</p>
+                        <p id="category-desc">Description Here</p>
+                        <select value={this.state.countryValue} onChange={this.handleCountryChange}>
+                            <option value="Choose a Country" disabled>Choose a Country</option>
+                            {this.state.countries.map((country) =>
+                                <option key={country} value={country}>{country}</option>)}
                         </select>
                     </div>
+                </div>
+                <div id="vaccine-inventory">
+                    <p id="category-title">Vaccine Inventory</p>
+                    <p id="category-desc">Description Here</p>
+                    <input
+                        type="text"
+                        onPaste={e=>{
+                            e.preventDefault();
+                            return false}
+                        }
+                        pattern="[0-9]*"
+                        value={this.state.vaccineCount}
+                        onChange={this.handleVaccineCount}
+                        placeholder="Enter number of vaccines"
+                    />
+                </div>
+                <div id="districts-container">
+                    <p id="category-title">Previous Campaigns Held</p>
+                    <p id="category-desc">Description Here</p>
+                    <div id="districts-list-container">
+                        {
+                            this.state.districts.map(district => (
+                                <li key={district}>
+                                    <label>
+                                        <input
+                                            type="checkbox"
+                                            key={district}
+                                            value={district}
+                                            onChange={this.handleCheckboxPress}
+                                        /> {district}
+                                    </label>
+                                </li>
+                            ))
+                        }
+                    </div>
+                </div>
+                <form onSubmit={this.handleSubmit} id="covid-stats-container">
+                    <p id="category-title">COVID Statistics Regarding Country</p>
+                    <p id="category-desc">Description Here</p>
+                    <input type="file" name="file" onChange={this.handleCovidFile} accept=".csv"/>
+                    <button type="submit"> Update File </button>
+                </form>
+                <div id="general-stats-container">
+                    <p id="category-title">General Statistics Regarding Country</p>
+                    <p id="category-desc">Description Here</p>
+                    <input type="file" onChange={this.handleGeneralFile} accept=".csv"/>
                 </div>
                 <canvas ref={this.canvas} width={this.props.width} height={this.props.height}/>
             </div>
