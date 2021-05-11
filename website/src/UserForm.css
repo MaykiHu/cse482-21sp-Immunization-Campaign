@@ -30,31 +30,30 @@ some space around the title and console font. :) */
     font-size: 36px;
     font-weight: bolder;
     float: left;
-    margin-top: 5%;
-    margin-left: 11%;
     font-family: "Courier New", Courier, monospace;
     text-decoration: overline underline;
     text-decoration-style: double;
     text-shadow: 2px 2px gold;
+    margin-bottom: 2%;
 }
 
 /* Makes user-form and elements inside form div align center */
 #user-form {
-    display: inline-block;
-    text-align: center;
+    display: flex;
+    text-align: left;
     background-color: darkgoldenrod;
     border-radius: 20px;
+    justify-content: left;
+    flex-direction: column;
 }
 
 /* The div for the dropdowns, so they appear inline with some nice spacing and border and font */
 #dropdown {
-    width: 500px;
     padding-right: 1%;
     padding-left: 1%;
     padding-bottom: 2%;
-    margin-top: 2%;
+    margin-left: 25%;
     margin-bottom: 2%;
-    margin-left: 5%;
     border-style: dashed;
     border-radius: 10px;
     background-color: rebeccapurple;
@@ -63,6 +62,7 @@ some space around the title and console font. :) */
     text-shadow: 2px 2px purple;
     font-size: 18px;
     text-align: left;
+    width: 50%;
 }
 
 /* For spacing between dropdown and color */
@@ -70,6 +70,62 @@ some space around the title and console font. :) */
     margin-left: 2%;
     margin-right: 5%;
     color: gold;
+}
+
+/* For styling vaccine inventory */
+#vaccine-inventory {
+    padding-right: 1%;
+    padding-left: 1%;
+    padding-bottom: 2%;
+    margin-bottom: 2%;
+    margin-left: 25%;
+    border-style: dashed;
+    border-radius: 10px;
+    background-color: rebeccapurple;
+    font-family: "Courier New", Courier, monospace;
+    font-weight: bold;
+    text-shadow: 2px 2px purple;
+    font-size: 18px;
+    text-align: left;
+    width: 50%;
+}
+
+/* For styling districts question/category */
+#districts-container {
+    padding-right: 1%;
+    padding-left: 1%;
+    padding-bottom: 2%;
+    margin-bottom: 2%;
+    margin-left: 25%;
+    border-style: dashed;
+    border-radius: 10px;
+    background-color: rebeccapurple;
+    font-family: "Courier New", Courier, monospace;
+    font-weight: bold;
+    text-shadow: 2px 2px purple;
+    font-size: 18px;
+    text-align: left;
+    width: 50%;
+}
+
+/* For scrollable districts checkbox */
+#districts-list-container {
+    position: relative;
+    border: 2px solid #ccc;
+    padding: 2%;
+    height: 200px;
+    margin: 0 auto;
+    overflow-y: scroll;
+}
+
+/* For styling form category title */
+#category-title {
+    font-size: 20px;
+}
+
+/* For styling form category description */
+#category-desc {
+    font-size: 14px;
 }
 
 /* For background color of dropdowns */
@@ -106,4 +162,12 @@ button {
 /* For changing color on buttons when hovered */
 button:hover {
     background-color: yellow;
+}
+
+/* For styling list of districts */
+li {
+    list-style-type: none;
+    /* To align text */
+    display: flex;
+    align-items: center;
 }
