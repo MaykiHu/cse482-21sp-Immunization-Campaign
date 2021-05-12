@@ -47,33 +47,8 @@ some space around the title and console font. :) */
     flex-direction: column;
 }
 
-/* The div for the dropdowns, so they appear inline with some nice spacing and border and font */
-#dropdown {
-    padding-right: 1%;
-    padding-left: 1%;
-    padding-bottom: 2%;
-    margin-left: 25%;
-    margin-bottom: 2%;
-    border-style: dashed;
-    border-radius: 10px;
-    background-color: rebeccapurple;
-    font-family: "Courier New", Courier, monospace;
-    font-weight: bold;
-    text-shadow: 2px 2px purple;
-    font-size: 18px;
-    text-align: left;
-    width: 50%;
-}
-
-/* For spacing between dropdown and color */
-#country-dropdown {
-    margin-left: 2%;
-    margin-right: 5%;
-    color: gold;
-}
-
-/* For styling vaccine inventory */
-#vaccine-inventory {
+/* For styling form category containers */
+#dropdown, #vaccine-inventory, #districts-container, #covid-stats-container, #general-stats-container {
     padding-right: 1%;
     padding-left: 1%;
     padding-bottom: 2%;
@@ -88,24 +63,7 @@ some space around the title and console font. :) */
     font-size: 18px;
     text-align: left;
     width: 50%;
-}
-
-/* For styling districts question/category */
-#districts-container {
-    padding-right: 1%;
-    padding-left: 1%;
-    padding-bottom: 2%;
-    margin-bottom: 2%;
-    margin-left: 25%;
-    border-style: dashed;
-    border-radius: 10px;
-    background-color: rebeccapurple;
-    font-family: "Courier New", Courier, monospace;
-    font-weight: bold;
-    text-shadow: 2px 2px purple;
-    font-size: 18px;
-    text-align: left;
-    width: 50%;
+    color: white;
 }
 
 /* For scrollable districts checkbox */
@@ -128,17 +86,22 @@ some space around the title and console font. :) */
     font-size: 14px;
 }
 
-/* For background color of dropdowns */
-select {
-    background-color: gold;
-    font-family: "Courier New", Courier, monospace;
-    font-weight: bold;
-    font-size: 14px;
+/* For styling submit button */
+#submit-button {
+    position: relative;
+    width: 52%;
+    margin-bottom: 2%;
+    margin-left: 25%;
 }
 
-/* For color change when hovering over drop down */
+/* For styling of dropdowns */
+select {
+
+}
+
+/* Forstyling of hovering on a dropdown */
 select:hover {
-    background-color: yellow;
+
 }
 
 /* For background color of dropdown items */
@@ -150,13 +113,8 @@ option {
 
 /* Font for all buttons */
 button {
-    font-family: "Courier New", Courier, monospace;
-    font-weight: bolder;
-    background-color: gold;
-    color: purple;
-    text-shadow: 1px 1px rebeccapurple;
-    font-size: 14px;
-    padding: 2%;
+    margin: 1%;
+    width: fit-content;
 }
 
 /* For changing color on buttons when hovered */

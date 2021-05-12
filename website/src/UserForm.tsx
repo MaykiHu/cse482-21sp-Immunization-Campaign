@@ -201,7 +201,6 @@ class UserForm extends Component<UserFormProps, UserFormState> {
             this.setState({
                 covidFile: file[0]
             });
-            console.log(file);
             return true;
         } else {  // no file provided
             this.setState({
@@ -216,14 +215,14 @@ class UserForm extends Component<UserFormProps, UserFormState> {
             const file = event.target.files;
             const fileName = event.target.files[0].name;
             if (fileName !== "general_stats_template.csv") {
-                alert("Different file selected; please provide our covid_stats_template.csv");
+                alert("Different file selected; please provide our general_stats_template.csv");
                 this.setState({
                     generalFile: null
                 });
                 return false;
             }
             this.setState({
-                generalFile: file
+                generalFile: file[0]
             });
             return true;
         } else {  // no file provided
@@ -233,12 +232,40 @@ class UserForm extends Component<UserFormProps, UserFormState> {
         }
     }
 
-    // Handles uploading attached covid file to server
+    // Handles uploading the state of the website to backend for planning
     handleSubmit = (event: any) => {
+        // Send to backend (local atm), the JSON stringified states
+        // and any user uploads
+        var stateFile = new File([JSON.stringify([this.state.countryValue,
+            this.state.vaccineCount,
+            Array.from(this.state.checkedDistricts.entries())])], "states.json");
+        const formData = new FormData()
+            formData.append('file', stateFile)
+            fetch('http://localhost:4567/saveJSON', {
+                method: 'POST',
+                body: formData
+            })
+            .catch(error => {
+                console.error(error)
+            })
+        if (this!.state.generalFile !== null) {
+            const formData = new FormData()
+            formData.append('file', this.state.generalFile)
+            fetch('http://localhost:4567/saveGeneralFile', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log(data)
+            })
+            .catch(error => {
+                console.error(error)
+            })
+        }
         if (this!.state.covidFile !== null) {
             const formData = new FormData()
             formData.append('file', this.state.covidFile)
-            console.log(formData);
             fetch('http://localhost:4567/saveCovidFile', {
                 method: 'POST',
                 body: formData
@@ -253,9 +280,52 @@ class UserForm extends Component<UserFormProps, UserFormState> {
         }
     }
 
+    // For downloading files, fetching to download from fileName
+    download = (fileName: string) => {
+        let link = document.createElement('a'); // Create link
+        link.download = fileName; // What the file name is
+        // @ts-ignore
+        link.href = "./" + fileName;
+        link.click(); // Click to download the link
+        // local download atm from website/public folder
+        // fixing CORS policy to downlaod from backServer.py when
+        // endpoints are created, commented out below,
+        // Would have one from possible endpoint like such:
+//         fetch("http://localhost:8080/download/" + fileName, {
+//             method: 'GET',
+//             headers: {
+//                 'Content-Type': 'text/csv',
+//                 'Content-Disposition': 'attachment',
+//             },
+//         })
+//         .then((response) => response.blob())
+//         .then((blob) => {
+//             // Create blob link to download
+//             const url = window.URL.createObjectURL(
+//                 new Blob([blob]),
+//             );
+//             const link = document.createElement('a');
+//             link.href = url;
+//             link.setAttribute(
+//                 'download',
+//                 fileName + `.csv`,
+//             );
+//
+//             // Append to html link element page
+//             document.body.appendChild(link);
+//
+//             // Start download
+//             link.click();
+//
+//             // Clean up and remove the link
+//             //link.parentNode.removeChild(link);
+//             console.log(blob);
+//           });
+    }
+
     render() {
         return (
-            <div id="user-form">
+            <form onSubmit={this.handleSubmit} id="user-form">
                 <p id="app-title">Campaign Planning</p>
                 <div id="dropdown">
                     <div id="country-dropdown">
@@ -303,19 +373,21 @@ class UserForm extends Component<UserFormProps, UserFormState> {
                         }
                     </div>
                 </div>
-                <form onSubmit={this.handleSubmit} id="covid-stats-container">
+                <div id="covid-stats-container">
                     <p id="category-title">COVID Statistics Regarding Country</p>
                     <p id="category-desc">Description Here</p>
+                    <button onClick={() => this.download("covid_stats_template.csv")}>Download COVID Stats Template</button>
                     <input type="file" name="file" onChange={this.handleCovidFile} accept=".csv"/>
-                    <button type="submit"> Update File </button>
-                </form>
+                </div>
                 <div id="general-stats-container">
                     <p id="category-title">General Statistics Regarding Country</p>
                     <p id="category-desc">Description Here</p>
-                    <input type="file" onChange={this.handleGeneralFile} accept=".csv"/>
+                    <button onClick={() => this.download("general_stats_template.csv")}>Download General Stats Template</button>
+                    <input type="file" name="file" onChange={this.handleGeneralFile} accept=".csv"/>
                 </div>
+                <button id="submit-button" type="submit"> Send to Plan </button>
                 <canvas ref={this.canvas} width={this.props.width} height={this.props.height}/>
-            </div>
+            </form>
         );
     }
 }
