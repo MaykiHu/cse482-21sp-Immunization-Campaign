@@ -95,11 +95,11 @@ some space around the title and console font. :) */
 
 /* For styling file upload text */
 #file-p {
-    display: inline-flex;
     font-weight: lighter;
     font-size: 12px;
-    display: inline-flex;
     position: relative;
+    float: right;
+    margin-right: 25%;
 }
 
 /* For styling of dropdowns and input alignment */
