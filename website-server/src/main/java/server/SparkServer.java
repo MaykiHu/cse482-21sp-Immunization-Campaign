@@ -78,7 +78,7 @@ public class SparkServer {
     private static String[] districts(String country) {
         String[] districts = new String[100];
         for (int i = 0; i < districts.length; i++) {
-            districts[i] = country + " District " + i;
+            districts[i] = country + " DISTRICT " + i;
         }
         return districts;
     }

@@ -10,7 +10,7 @@ class App extends Component<{}, {}> {
     render() {
         return (
             <div>
-            <UserForm width={4330} height={2964}/>
+            <UserForm />
             </div>
         );
     }
