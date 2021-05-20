@@ -60,12 +60,16 @@ public class SparkServer {
         Spark.get("/Mali-districts",
                 (req, res) -> gson.toJson(districts("Mali")));
 
-        // Request route to download specified file by param (/download?fileName=someFileName)
-        Spark.get("/download", (req, res) ->
-                downloadFile(req.params("fileName")));
+        // Request route to download specified file by param (/download/someFileName)
+        // Taking it out since CORS policy needs to be fixed, but will implement this
+        // on backServer.py
+        //Spark.get("/download/:file", (req, res) ->
+        //        downloadFile(req.params(":file")));
 
+        // For saving uploads/data from user
         Spark.post("/saveCovidFile", (req, res) -> uploadFile(req));
         Spark.post("/saveGeneralFile", (req, res) -> uploadFile(req));
+        Spark.post("/saveJSON", (req, res) -> uploadFile(req));
     }
 
     // Private helper to create dummy districts for a country
@@ -74,7 +78,7 @@ public class SparkServer {
     private static String[] districts(String country) {
         String[] districts = new String[100];
         for (int i = 0; i < districts.length; i++) {
-            districts[i] = country + " District " + i;
+            districts[i] = country + " DISTRICT " + i;
         }
         return districts;
     }
