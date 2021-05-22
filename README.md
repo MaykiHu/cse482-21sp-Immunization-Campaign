@@ -5,7 +5,7 @@ Do not commit nor push constants in 'dbConnect.py'
 Front End 
 
 1. Run SparkServer.java found in website-server folder
-2. In terminal, run "npm install" once if not already installed
+2. Cd to website folder. In terminal, run "npm install" once if not already installed
 3. Run "npm start" in terminal to open up localhost:3000
 
 
