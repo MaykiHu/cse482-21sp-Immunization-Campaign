@@ -51,6 +51,7 @@ class UserForm extends Component<UserFormProps, UserFormState> {
     }
 
     // Creates drop-down list of countries from the server data
+    // Try to see why visuals are bugged on dropdown (non-essential)
     fetchCountryDropList() {
         // Get the JSON info from server on countries, sorted alphabetically
         fetch("http://localhost:4567/countries")
@@ -70,34 +71,21 @@ class UserForm extends Component<UserFormProps, UserFormState> {
         // Get the JSON info from server on districts, sorted alphabetically
         // if country has been selected
         if (countryValue !== "Choose a Country") {
-            if (countryValue === "Uganda") {
-                fetch("http://localhost:8080/districts")
-                    .then((res) => {
-                        return res.json();
+            fetch("http://localhost:8080/" + countryValue + "-districts")
+                .then((res) => {
+                    return res.json();
+                })
+                // Parse and save the districts from JSON into an array
+                .then(data => {
+                    let districts = data.District;
+                    var districtsArr = [];
+                    for (let i = 0; i < Object.keys(districts).length; i++) {
+                        districtsArr.push(districts[i]);
+                    }
+                    this.setState({
+                        districts: districtsArr,
                     })
-                    // Parse and save the districts from JSON into an array
-                    .then(data => {
-                        let districts = data.District;
-                        var districtsArr = [];
-                        for (let i = 0; i < Object.keys(districts).length; i++) {
-                            districtsArr.push(districts[i]);
-                        }
-                        this.setState({
-                            districts: districtsArr,
-                        })
-                    });
-            } else {
-                fetch("http://localhost:4567/" + countryValue + "-districts")
-                    .then((res) => {
-                        return res.json();
-                    })
-                    // Save the districts
-                    .then(data => {
-                        this.setState({
-                            districts: data
-                        })
-                    });
-            }
+                });
         }
     }
 
@@ -179,43 +167,21 @@ class UserForm extends Component<UserFormProps, UserFormState> {
             Array.from(this.state.checkedDistricts.entries())])], "states.json");
         const formData = new FormData()
             formData.append('file', stateFile)
-            fetch('http://localhost:4567/saveJSON', {
-                method: 'POST',
-                body: formData
-            })
-            .catch(error => {
-                console.error(error)
-            })
         if (this!.state.generalFile !== null) {
-            const formData = new FormData()
             formData.append('file', this.state.generalFile)
-            fetch('http://localhost:4567/saveGeneralFile', {
-                method: 'POST',
-                body: formData
-            })
-            .then(response => response.json())
-            .then(data => {
-                console.log(data)
-            })
-            .catch(error => {
-                console.error(error)
-            })
         }
         if (this!.state.covidFile !== null) {
-            const formData = new FormData()
             formData.append('file', this.state.covidFile)
-            fetch('http://localhost:4567/saveCovidFile', {
-                method: 'POST',
-                body: formData
-            })
-            .then(response => response.json())
-            .then(data => {
-                console.log(data)
-            })
-            .catch(error => {
-                console.error(error)
-            })
         }
+        fetch('http://localhost:4567/submitFiles', {
+            method: 'POST',
+            body: formData
+        })
+        .catch(error => {
+            console.error(error)
+        })
+
+        // Further implementation: consider error checking for required data
     }
 
     // For downloading files, fetching to download from fileName
@@ -226,40 +192,7 @@ class UserForm extends Component<UserFormProps, UserFormState> {
         link.href = "./" + fileName;
         link.click(); // Click to download the link
 
-        // local download atm from website/public folder
-        // fixing CORS policy to download from backServer.py when
-        // endpoints are created, commented out below,
-        // Would have one from possible endpoint like such:
-//         fetch("http://localhost:8080/download/" + fileName, {
-//             method: 'GET',
-//             headers: {
-//                 'Content-Type': 'text/csv',
-//                 'Content-Disposition': 'attachment',
-//             },
-//         })
-//         .then((response) => response.blob())
-//         .then((blob) => {
-//             // Create blob link to download
-//             const url = window.URL.createObjectURL(
-//                 new Blob([blob]),
-//             );
-//             const link = document.createElement('a');
-//             link.href = url;
-//             link.setAttribute(
-//                 'download',
-//                 fileName + `.csv`,
-//             );
-//
-//             // Append to html link element page
-//             document.body.appendChild(link);
-//
-//             // Start download
-//             link.click();
-//
-//             // Clean up and remove the link
-//             //link.parentNode.removeChild(link);
-//             console.log(blob);
-//           });
+        // For further implementation, may consider a GET non-locally download
     }
 
     // Gets the file name of a file if not null

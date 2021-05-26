@@ -21,6 +21,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
+import java.util.Collection;
+import java.util.Iterator;
 import java.util.stream.Collectors;
 
 public class SparkServer {
@@ -67,9 +69,7 @@ public class SparkServer {
         //        downloadFile(req.params(":file")));
 
         // For saving uploads/data from user
-        Spark.post("/saveCovidFile", (req, res) -> uploadFile(req));
-        Spark.post("/saveGeneralFile", (req, res) -> uploadFile(req));
-        Spark.post("/saveJSON", (req, res) -> uploadFile(req));
+        Spark.post("/submitFiles", (req, res) -> uploadFile(req));
     }
 
     // Private helper to create dummy districts for a country
@@ -89,13 +89,17 @@ public class SparkServer {
         // TO allow for multipart file uploads
         request.attribute("org.eclipse.jetty.multipartConfig", new MultipartConfigElement(""));
         try {
-            // "file" is the key of the form data with the file itself being the value
-            Part filePart = request.raw().getPart("file");
-            // The name of the file user uploaded
-            String uploadedFileName = filePart.getSubmittedFileName();
-            InputStream stream = filePart.getInputStream();
-            // Write stream to file under uploads folder
-            Files.copy(stream, Paths.get("uploads").resolve(uploadedFileName), StandardCopyOption.REPLACE_EXISTING);
+            Collection<Part> fileParts = request.raw().getParts();
+
+            // Iterate the files
+            for (Iterator<Part> ptItr = fileParts.iterator(); ptItr.hasNext(); ) {
+                Part filePart = ptItr.next();
+                // The name of the file user uploaded
+                String uploadedFileName = filePart.getSubmittedFileName();
+                InputStream stream = filePart.getInputStream();
+                // Write stream to file under uploads folder
+                Files.copy(stream, Paths.get("uploads").resolve(uploadedFileName), StandardCopyOption.REPLACE_EXISTING);
+            }
         } catch (IOException | ServletException e) {
             return "Exception occurred while uploading file" + e.getMessage();
         }
