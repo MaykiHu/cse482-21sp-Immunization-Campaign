@@ -162,6 +162,7 @@ class UserForm extends Component<UserFormProps, UserFormState> {
 
     // Handles uploading the state of the website to backend for planning
     handleSubmit = (event: any) => {
+        event.preventDefault();
         // Send to backend (local atm), the JSON stringified states
         // and any user uploads
         var stateFile = new File([JSON.stringify([this.state.countryValue,
@@ -182,8 +183,9 @@ class UserForm extends Component<UserFormProps, UserFormState> {
         .catch(error => {
             console.error(error)
         })
-
-        // Further implementation: consider error checking for required data
+        let link = document.createElement('a'); // Create link
+        link.href = "./Map";
+        link.click(); // Redirects to map
     }
 
     // For downloading files, fetching to download from fileName
@@ -281,7 +283,7 @@ class UserForm extends Component<UserFormProps, UserFormState> {
                         </label>
                         <p id="file-p"> {this.getFileName(this.state.generalFile)} </p>
                     </div>
-                    <Link to="/Map"><button id="submit-button" type="submit"> Send to Plan </button></Link>
+                    <button id="submit-button" type="submit"> Send to Plan </button>
                 </form>
             </div>
         );
