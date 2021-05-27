@@ -12,10 +12,14 @@ hostName = 'localhost'
 serverPort = 8080
 dfCovid = None
 dfGeneral = None
+dfState = None
 abbrevs = {"Uganda": "UG", "Kenya": "KE", "Mali": "MAL", "Zimbabwe": "ZIM", "Benin": "BE"}
 total_doses = 0
 dfPriority = pd.DataFrame(columns = ['DISTIRCT','PRIORITY', 'TOTAL_POP', 'POP_VACCINATED', 'CAMPAIGN_LENGTH'])
 dfNumVaccine = pd.DataFrame(columns = ['DISTIRCT','PRIORITY','CAMPAIGN_LENGTH','NUM_VACCINE'])
+num_vaccines = None
+country = None
+dfPrevCampaigns = None
 
 class MyServer(BaseHTTPRequestHandler):
     def _set_headers(self):
@@ -29,25 +33,12 @@ class MyServer(BaseHTTPRequestHandler):
         # TODO: Create some kind of switch statement / method for each endpoint.
 
         if ("-districts" in self.path):
-            country = self.path.split('-')[0].replace("/", "").strip()
-            query = 'SELECT DISTINCT ft_level2 AS District FROM {country}_FACILITIES ORDER BY District'.format(country=abbrevs[country])
+            countryDrop = self.path.split('-')[0].replace("/", "").strip()
+            query = 'SELECT DISTINCT ft_level2 AS District FROM {country}_FACILITIES ORDER BY District'.format(country=abbrevs[countryDrop])
             dfsql = db.run_query(query)
             dfjson = dfsql.to_json(indent=4)
             self.wfile.write(bytes(dfjson, "utf-8"))
 
-
-
-        # #TODO: Add endpoints
-        # if ("/UG" in self.path):
-        #     parsed = parse.urlsplit(self.path)
-        #     print(parsed)
-        #     qDict = parse.parse_qs(parsed.query)
-        #     print(qDict)
-        #     print(qDict["vacc"])
-            # query = 'SELECT DISTINCT ft_level2 AS District FROM {table} ORDER BY District'.format(table=db.TABLE)
-            # dfsql = db.run_query(query)
-            # dfjson = dfsql.to_json(indent=4)
-            # self.wfile.write(bytes(dfjson, "utf-8"))
     
     def do_POST(self) :
         self._set_headers()
@@ -62,16 +53,34 @@ class MyServer(BaseHTTPRequestHandler):
         # name of file
         print(fileItem.filename)
         # file data as bytes
-        print(fileItem.value)
+        #print(fileItem.value)
         global dfCovid
         # set index so we can lookup rows by district
         dfCovid = pd.read_csv(BytesIO(fileItem.value)).set_index('DISTRICTS') 
+        #print(dfCovid)
+        # self.wfile.write(bytes("Post Reply", "utf-8"))
 
         # General stats file
         fileItem = form['generalFile']
         global dfGeneral
         dfGeneral = pd.read_csv(BytesIO(fileItem.value)).set_index('DISTRICTS') 
 
+        # General stats file
+        fileItem = form['stateFile']
+        print(fileItem.filename)
+        global dfState 
+        dfState = pd.read_json(BytesIO(fileItem.value))
+
+        global country
+        country = dfState[0][0] #index of country
+        global num_vaccines
+        num_vaccines = dfState[0][1] #index of vaccine #
+        global dfPrevCampaigns
+        prev_campaigns_list = dfState[0][2]
+        dfPrevCampaigns = pd.DataFrame(prev_campaigns_list, columns=['DISTRICTS', 'FINISHED'])
+        dfPrevCampaigns = dfPrevCampaigns.set_index('DISTRICTS') #Lookup by district       
+
+        # TODO: for each dist in dfPrevCampaigns.index.values priority_score(dist)
      
     def priority_score(self, distr): 
         global dfPriority
@@ -79,18 +88,28 @@ class MyServer(BaseHTTPRequestHandler):
         # TODO: Grab from user
         distr = 'ADJUMANI'
 
+        #TODO: get data you need all at once and store it globally then do a pull for each district
+        '''
+           Heads up each of these queries is returning dataframes
+           not values so I think it would be better just to load in all of the columns you need
+           and then grab the values.
+
+           The less times you run_query, the better
+        '''
         # Get number of people under age 15 from database
-        query = 'SELECT fi_pop_under15 FROM UG_ADMIN_AREA WHERE ft_level2 = {district}'.format(district=distr)
+        query = ('SELECT fi_pop_under15 FROM {country}_ADMIN_AREA WHERE ft_level2 = {district}'
+                 .format(country=abbrevs[country], district=distr))
         pop_under15 = db.run_query(query)
 
         # Estimate population using database info. Add 15% of estimated count to account for error
-        query = 'SELECT SUM(fi_tot_pop) FROM UG_FACILITIES WHERE ft_level2 = {district} '.format(district=distr)
+        query = ('SELECT SUM(fi_tot_pop) FROM {country}_FACILITIES WHERE ft_level2 = {district} '
+                 .format(country=abbrevs[country], district=distr))
         estimated_pop = db.run_query(query)
         true_pop = estimated_pop + (estimated_pop * 0.15) 
 
         # TODO: figure out how get districts where campaign held from front end
-        # JSON file: country, district, ??
-        campaign_held = False
+        # JSON file: country, district, ?? DONE
+        campaign_held = dfPrevCampaigns.loc(distr, "FINISHED") # gets value from dataframe
         percent_vaccinated = dfCovid.loc[distr, 'NUM_VACCINATIED'] / true_pop
         percent_cases = dfCovid.loc[distr, 'NUM_CASES'] / true_pop
 
@@ -153,8 +172,7 @@ class MyServer(BaseHTTPRequestHandler):
         #   Adjust population percentage levels to better reflect risk and priority
         if  percent_cases >= 0.5 and (risk == 3 or risk == 2):
             priority = 5 
-        elif (risk == 1 and percent_cases > 0.1) or     
-                (risk == 2 and percent_cases >= 0.3 and percent_cases < 0.5) :
+        elif (risk == 1 and percent_cases > 0.1) or (risk == 2 and percent_cases >= 0.3 and percent_cases < 0.5) :
             priority = 3
         elif (risk == 2 and percent_cases < 0.3) or (risk == 3 and percent_cases < 0.5):
             prioirty = 4
@@ -178,12 +196,10 @@ class MyServer(BaseHTTPRequestHandler):
         # have x num of locations, have y num of staff, 
         # y / 4 >= x? 
 
-        dfPriority = dfPriority.append({'DISTRICT': distr,'PRIORITY': priority, 'TOTAL_POP': true_pop,
-                    'POP_VACCINATED':dfCovid.loc[distr, 'NUM_VACCINATIED'], CAMPAIGN_LENGTH': campaign_length}, ignore_index = True)   
-                   
+        dfPriority = dfPriority.append({'DISTRICT': distr,'PRIORITY': priority, 'TOTAL_POP': true_pop, 
+                    'POP_VACCINATED': dfCovid.loc[distr, 'NUM_VACCINATIED'], 'CAMPAIGN_LENGTH': campaign_length}, ignore_index = True)
+                    
     def vacc_alloc (self):
-        # TODO: get num vaccines from user
-        num_vaccine = 1000
         priority = 5
         distributed = 0
         # Percentage of population to aim to vaccinate depending on priority
@@ -196,13 +212,13 @@ class MyServer(BaseHTTPRequestHandler):
             priority_results = dfPriority.loc[dfPriority['PRIORITY'] == priority]
             for row in dfPriority.iterrows():
                 num_vax_needed = ( row['TOTAL_POP'] * target_percent[priority - 1]) - row['POPULATION_TO_VAX']
-                if num_vaccine > 0:
-                    if num_vaccine >= num_vax_needed:
-                        num_vaccine -= num_vax_needed
+                if num_vaccines > 0:
+                    if num_vaccines >= num_vax_needed:
+                        num_vaccines -= num_vax_needed
                         distributed = num_vax_needed
                     else: 
-                        # num_vaccine < num_vax_needed
-                        distributed = num_vaccine
+                        # num_vaccines < num_vax_needed
+                        distributed = num_vaccines
                         num_vacc = 0
                 else: 
                     distributed = 0
