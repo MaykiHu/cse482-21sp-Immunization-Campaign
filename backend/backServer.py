@@ -47,40 +47,49 @@ class MyServer(BaseHTTPRequestHandler):
             headers=self.headers,
             environ={'REQUEST_METHOD': 'POST'}
         )
-        
-        # Do what you wish with file_content
-        fileItem = form['covidFile']
-        # name of file
-        print(fileItem.filename)
-        # file data as bytes
-        #print(fileItem.value)
-        global dfCovid
-        # set index so we can lookup rows by district
-        dfCovid = pd.read_csv(BytesIO(fileItem.value)).set_index('DISTRICTS') 
-        #print(dfCovid)
-        # self.wfile.write(bytes("Post Reply", "utf-8"))
+        if (self.path == "/results") :
+            # Do what you wish with file_content
+            fileItem = form['covidFile']
+            # name of file
+            covidName = fileItem.filename
+            # file data as bytes
+            #print(fileItem.value)
+            global dfCovid
+            # set index so we can lookup rows by district
+            dfCovid = pd.read_csv(BytesIO(fileItem.value)).set_index('DISTRICTS') 
+            print(dfCovid)
+            print()
+            
 
-        # General stats file
-        fileItem = form['generalFile']
-        global dfGeneral
-        dfGeneral = pd.read_csv(BytesIO(fileItem.value)).set_index('DISTRICTS') 
+            # General stats file
+            fileItem = form['generalFile']
+            generalName = fileItem.filename
+            global dfGeneral
+            dfGeneral = pd.read_csv(BytesIO(fileItem.value)).set_index('DISTRICTS')
+            print(dfGeneral)
+            print()
 
-        # General stats file
-        fileItem = form['stateFile']
-        print(fileItem.filename)
-        global dfState 
-        dfState = pd.read_json(BytesIO(fileItem.value))
+            # General stats file
+            fileItem = form['stateFile']
+            stateName = fileItem.filename
+            global dfState 
+            dfState = pd.read_json(BytesIO(fileItem.value))
 
-        global country
-        country = dfState[0][0] #index of country
-        global num_vaccines
-        num_vaccines = dfState[0][1] #index of vaccine #
-        global dfPrevCampaigns
-        prev_campaigns_list = dfState[0][2]
-        dfPrevCampaigns = pd.DataFrame(prev_campaigns_list, columns=['DISTRICTS', 'FINISHED'])
-        dfPrevCampaigns = dfPrevCampaigns.set_index('DISTRICTS') #Lookup by district       
-
-        # TODO: for each dist in dfPrevCampaigns.index.values priority_score(dist)
+            global country
+            country = dfState[0][0] #index of country
+            global num_vaccines
+            num_vaccines = dfState[0][1] #index of vaccine #
+            global dfPrevCampaigns
+            prev_campaigns_list = dfState[0][2]
+            dfPrevCampaigns = pd.DataFrame(prev_campaigns_list, columns=['DISTRICTS', 'FINISHED'])
+            dfPrevCampaigns = dfPrevCampaigns.set_index('DISTRICTS') #Lookup by district       
+            retString = "" + covidName + "," + stateName
+            print(dfPrevCampaigns)
+            print()
+            print(retString)
+            # self.wfile.write(bytes(retString, "utf-8"))
+            # TODO: for each dist in dfPrevCampaigns.index.values priority_score(dist)
+            
      
     def priority_score(self, distr): 
         global dfPriority

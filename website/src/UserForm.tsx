@@ -169,14 +169,14 @@ class UserForm extends Component<UserFormProps, UserFormState> {
             this.state.vaccineCount,
             Array.from(this.state.checkedDistricts.entries())])], "states.json");
         const formData = new FormData()
-            formData.append('file', stateFile)
+            formData.append('stateFile', stateFile)
         if (this!.state.generalFile !== null) {
-            formData.append('file', this.state.generalFile)
+            formData.append('generalFile', this.state.generalFile)
         }
         if (this!.state.covidFile !== null) {
-            formData.append('file', this.state.covidFile)
+            formData.append('covidFile', this.state.covidFile)
         }
-        fetch('http://localhost:4567/submitFiles', {
+        fetch('http://localhost:8080/results', {
             method: 'POST',
             body: formData
         })
