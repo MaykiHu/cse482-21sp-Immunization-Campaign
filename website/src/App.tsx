@@ -4,6 +4,7 @@
 
 import React, {Component} from 'react';
 import UserForm from "./UserForm";
+import Map from "./Map";
 
 class App extends Component<{}, {}> {
 

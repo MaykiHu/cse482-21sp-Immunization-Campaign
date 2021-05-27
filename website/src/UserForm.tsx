@@ -4,7 +4,9 @@
  */
 
 import React, {Component} from 'react';
+import {Link } from "react-router-dom";
 import "./UserForm.css";
+import "./Map";
 
 interface UserFormProps {
 
@@ -279,7 +281,7 @@ class UserForm extends Component<UserFormProps, UserFormState> {
                         </label>
                         <p id="file-p"> {this.getFileName(this.state.generalFile)} </p>
                     </div>
-                    <button id="submit-button" type="submit"> Send to Plan </button>
+                    <Link to="/Map"><button id="submit-button" type="submit"> Send to Plan </button></Link>
                 </form>
             </div>
         );

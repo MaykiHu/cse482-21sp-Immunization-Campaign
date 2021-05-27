@@ -10,10 +10,14 @@
     "@types/node": "^12.12.39",
     "@types/react": "^16.9.35",
     "@types/react-dom": "^16.9.8",
-    "react": "^16.13.1",
-    "react-dom": "^16.13.1",
+    "@types/react-router": "^5.1.14",
+    "leaflet": "^1.7.1",
+    "react": "^16.14.0",
+    "react-dom": "^16.14.0",
+    "react-leaflet": "^3.2.0",
+    "react-router-dom": "^5.2.0",
     "react-scripts": "3.4.1",
-    "typescript": "^3.7.5"
+    "typescript": "^4.1.2"
   },
   "scripts": {
     "start": "react-scripts start",
@@ -24,16 +28,12 @@
   "eslintConfig": {
     "extends": "react-app"
   },
-  "browserslist": {
-    "production": [
-      ">0.2%",
-      "not dead",
-      "not op_mini all"
-    ],
-    "development": [
-      "last 1 chrome version",
-      "last 1 firefox version",
-      "last 1 safari version"
-    ]
+  "browserslist": [
+    ">0.2%",
+    "not dead",
+    "not op_mini all"
+  ],
+  "devDependencies": {
+    "@types/leaflet": "^1.7.0"
   }
 }
