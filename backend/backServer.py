@@ -15,8 +15,8 @@ dfGeneral = None
 dfState = None
 abbrevs = {"Uganda": "UG", "Kenya": "KE", "Mali": "MAL", "Zimbabwe": "ZIM", "Benin": "BE"}
 total_doses = 0
-dfPriority = pd.DataFrame(columns = ['DISTIRCT','PRIORITY', 'TOTAL_POP', 'POP_VACCINATED', 'CAMPAIGN_LENGTH'])
-dfNumVaccine = pd.DataFrame(columns = ['DISTIRCT','PRIORITY','CAMPAIGN_LENGTH','NUM_VACCINE'])
+dfPriority = pd.DataFrame(columns = ['DISTRICT','PRIORITY', 'TOTAL_POP', 'POP_VACCINATED', 'CAMPAIGN_LENGTH'])
+dfNumVaccine = pd.DataFrame(columns = ['DISTRICT','PRIORITY','CAMPAIGN_LENGTH','NUM_VACCINE'])
 num_vaccines = None # number of vaccines inputted by user
 country = None
 dfPrevCampaigns = None
@@ -42,25 +42,27 @@ class MyServer(BaseHTTPRequestHandler):
 
     def query_data(self):   
         # Get number of people under age 15 from database
-        query1 = ('SELECT ft_level2 AS DISTRICTS, fi_pop_under15 AS UNDER15 FROM {country}_ADMIN_AREAS'
+        query1 = ('SELECT ft_level2 AS DISTRICTS, SUM(fi_pop_under15) AS UNDER15 FROM {country}_ADMIN_AREAS GROUP BY ft_level2'
                 .format(country=abbrevs[country])) 
         dfPop_under15 = db.run_query(query1).set_index('DISTRICTS')
 
         # Estimate population using database info. Add 15% of estimated count to account for error
         query2 = ('SELECT ft_level2 AS DISTRICTS, SUM(fi_tot_pop) AS POPULATION FROM {country}_FACILITIES GROUP BY ft_level2'
                  .format(country=abbrevs[country]))
-        dfTotal_pop = db.run_query(query2).set_index('DISTRICTS').fillNa
+        dfTotal_pop = db.run_query(query2).set_index('DISTRICTS')
         global dfData
         dfData = dfPop_under15.join(dfTotal_pop) # DISTRICTS, UNDER15, POPULATION
 
     def priority_score(self, distr): 
         global dfPriority
+        risk = 0
         # If no data of pop_under15, use 0 not realistic but would need complete data or guess percentage
-        pop_under15 = 0 if dfData.loc[distr, 'UNDER15'].isnull() else dfData.loc[distr, 'UNDER15']
+        pop_under15 = 0 if dfData.loc[distr, 'UNDER15'] else dfData.loc[distr, 'UNDER15']
+        
         estimated_pop = dfData.loc[distr, 'POPULATION']
         true_pop = estimated_pop + (estimated_pop * 0.15) # Add 15% to estimated to account for error
         campaign_held = distr in dfPrevCampaigns.index.values
-        percent_vaccinated = dfCovid.loc[distr, 'NUM_VACCINATIED'] / true_pop
+        percent_vaccinated = dfCovid.loc[distr, 'NUM_VACCINATED'] / true_pop
         percent_cases = dfCovid.loc[distr, 'NUM_CASES'] / true_pop
 
         # STEP 1: Evaulate population and impact of outbreak
@@ -138,8 +140,8 @@ class MyServer(BaseHTTPRequestHandler):
         #       - 1 person mobilizing crowds)
         # Goal: Vaccinate >80% of population for herd immunity
         # Future implementation: Account for facility's resupply interval and storage capacity 
-        num_to_vaccinate = (true_pop * 0.8) - dfCovid.loc[distr, 'NUM_VACCINATIED']
-        vacc_admin_per_day = 10 * 60 * dfCovid.loc[distr, 'MIN_TO_ADMIN_VACC'] * 2 * dfGeneral.loc[distr, 'NUM_VACCINE_SITES']
+        num_to_vaccinate = (true_pop * 0.8) - dfCovid.loc[distr, 'NUM_VACCINATED']
+        vacc_admin_per_day = 10 * 60 * (1 / dfCovid.loc[distr, 'MIN_TO_ADMIN_VACC']) * 2 * dfGeneral.loc[distr, 'NUM_VACCINE_SITES']
         campaign_length = num_to_vaccinate / vacc_admin_per_day
 
         # TODO: factor in num of staff available
@@ -147,9 +149,12 @@ class MyServer(BaseHTTPRequestHandler):
         # y / 4 >= x? 
 
         dfPriority = dfPriority.append({'DISTRICT': distr,'PRIORITY': priority, 'TOTAL_POP': true_pop, 
-                    'POP_VACCINATED': dfCovid.loc[distr, 'NUM_VACCINATIED'], 'CAMPAIGN_LENGTH': campaign_length}, ignore_index = True)
+                    'POP_VACCINATED': dfCovid.loc[distr, 'NUM_VACCINATED'], 'CAMPAIGN_LENGTH': campaign_length}, ignore_index = True)
                     
     def alloc_vaccines(self):
+        global dfPriority
+        global dfNumVaccine
+        global num_vaccines
         priority = 5
         distributed = 0
         # Percentage of population to aim to vaccinate depending on priority
@@ -160,10 +165,16 @@ class MyServer(BaseHTTPRequestHandler):
         # Prioritize districts with higher priority and distribute vaccines there first
         while priority > 0:
             priority_results = dfPriority.loc[dfPriority['PRIORITY'] == priority]
-            for row in dfPriority.iterrows():
-                num_vax_needed = ( row['TOTAL_POP'] * target_percent[priority - 1]) - row['POPULATION_TO_VAX']
-                if num_vaccines > 0:
-                    if num_vaccines >= num_vax_needed:
+            for ind in dfPriority.index:
+                print('total pop')
+                print(dfPriority.loc[ind,'TOTAL_POP'])
+                print('pop vaccinated')
+                print(dfPriority.loc[ind, 'POP_VACCINATED'])
+                print('num_vaccines')
+                print(num_vaccines)
+                num_vax_needed = (dfPriority.loc[ind,'TOTAL_POP'] * target_percent[priority - 1]) - dfPriority.loc[ind, 'POP_VACCINATED']
+                if (num_vaccines > 0):
+                    if (num_vaccines >= num_vax_needed):
                         num_vaccines -= num_vax_needed
                         distributed = num_vax_needed
                     else:  # num_vaccines < num_vax_needed
@@ -171,12 +182,13 @@ class MyServer(BaseHTTPRequestHandler):
                         num_vacc = 0
                 else: 
                     distributed = 0
-                dfNumVacc = dfNumVacc.append({'DISTIRCT': row['DISTIRCT'],'PRIORITY': row.loc['PRIORITY'],
-                            'CAMPAIGN_LENGTH': row['CAMPAIGN_LENGTH'],'NUM_VACCINE': distributed}, ignore_index = True)
+                # TODO: fix     
+                dfNumVaccine = dfNumVaccine.append({'DISTRICT': dfPriority['DISTRICT'],'PRIORITY': dfPriority.loc['PRIORITY'],
+                            'CAMPAIGN_LENGTH': dfPriority['CAMPAIGN_LENGTH'],'NUM_VACCINE': distributed}, ignore_index = True)
             priority -= 1
 
         # Convert results (district, campaign length, num vaccines distributed etc) to json     
-        dfjson = dfNumVacc.to_json(indent=4)
+        dfjson = dfNumVaccine.to_json(indent=4)
         self.wfile.write(bytes(dfjson, "utf-8"))
 
     def do_POST(self) :
@@ -217,7 +229,7 @@ class MyServer(BaseHTTPRequestHandler):
             global country
             country = dfState[0][0] #index of country
             global num_vaccines
-            num_vaccines = dfState[0][1] #index of vaccine #
+            num_vaccines = int(dfState[0][1]) #index of vaccine #
             global dfPrevCampaigns
             prev_campaigns_list = dfState[0][2]
             dfPrevCampaigns = pd.DataFrame(prev_campaigns_list, columns=['DISTRICTS', 'FINISHED'])
@@ -229,13 +241,14 @@ class MyServer(BaseHTTPRequestHandler):
             # self.wfile.write(bytes(retString, "utf-8"))
          
             # Calculate priority for each district
-            # self.query_data() # get data from db
-            # for district in dfData.index.values:
-            #     self.priority_score(district)
+            self.query_data() # get data from db
+            for district in dfData.index.values:
+                 self.priority_score(district)
             
-            # print()
-            # print(dfPriority)
-            #alloc_vaccines() # allocate vaccine to districts
+            print()
+            print(dfPriority)
+            self.alloc_vaccines() # allocate vaccine to districts
+            print(dfNumVaccine)
 
 
 if __name__ == "__main__":        
