@@ -173,17 +173,13 @@ class MyServer(BaseHTTPRequestHandler):
                         distributed = num_vax_needed
                     else:  # num_vaccines < num_vax_needed
                         distributed = num_vaccines
-                        num_vacc = 0
+                        num_vaccines = 0
                 else: 
                     distributed = 0
                 # TODO: fix     
                 dfNumVaccine = dfNumVaccine.append({'DISTRICT': dfPriority.loc[ind, 'DISTRICT'],'PRIORITY': dfPriority.loc[ind, 'PRIORITY'],
                             'CAMPAIGN_LENGTH': dfPriority.loc[ind, 'CAMPAIGN_LENGTH'],'NUM_VACCINE': distributed}, ignore_index = True)
             priority -= 1
-
-        # Convert results (district, campaign length, num vaccines distributed etc) to json     
-        dfjson = dfNumVaccine.to_json(indent=4)
-        self.wfile.write(bytes(dfjson, "utf-8"))
 
     def do_POST(self) :
         self._set_headers()
@@ -242,7 +238,11 @@ class MyServer(BaseHTTPRequestHandler):
             print()
             print(dfPriority)
             self.alloc_vaccines() # allocate vaccine to districts
-            print(dfNumVaccine)
+            #print(dfNumVaccine)
+            # Convert results to json     
+            dfjson = dfNumVaccine.to_json(indent=4)
+            self.wfile.write(bytes(dfjson, "utf-8"))
+            print(dfjson)
 
 
 if __name__ == "__main__":        
