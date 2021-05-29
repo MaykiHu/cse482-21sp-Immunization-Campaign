@@ -4,7 +4,6 @@
  */
 
 import React, {Component} from 'react';
-import {Link } from "react-router-dom";
 import "./UserForm.css";
 import "./Map";
 
@@ -160,6 +159,11 @@ class UserForm extends Component<UserFormProps, UserFormState> {
         }
     }
 
+    // Delays response by @param ms
+    delay(ms: number) {
+        return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
     // Handles uploading the state of the website to backend for planning
     handleSubmit = (event: any) => {
         event.preventDefault();
@@ -176,16 +180,19 @@ class UserForm extends Component<UserFormProps, UserFormState> {
         if (this!.state.covidFile !== null) {
             formData.append('covidFile', this.state.covidFile)
         }
-        fetch('http://localhost:8080/results', {
-            method: 'POST',
-            body: formData
-        })
-        .catch(error => {
-            console.error(error)
-        })
-        let link = document.createElement('a'); // Create link
-        link.href = "./Map";
-        link.click(); // Redirects to map
+        (async () => {
+            fetch('http://localhost:8080/results', {
+                method: 'POST',
+                body: formData
+            })
+            .catch(error => {
+                console.error(error)
+            })
+            await this.delay(1000);
+            let link = document.createElement('a'); // Create link
+            link.href = "./Map";
+            link.click(); // Redirects to map
+        })();
     }
 
     // For downloading files, fetching to download from fileName
