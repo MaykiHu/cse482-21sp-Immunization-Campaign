@@ -84,7 +84,7 @@ class MyServer(BaseHTTPRequestHandler):
                 risk_score += 5
             
             # Population susceptibility: High population of 60+ year olds means higher risk 
-            if (dfGeneral.loc[distr, 'PERCENT_POP_60+'] / true_pop) > 0.35:
+            if (dfGeneral.loc[distr, 'PERCENT_POP_60+'] > 0.35):
                 risk_score += 7 
             else:
                 risk_score += 4
@@ -160,18 +160,12 @@ class MyServer(BaseHTTPRequestHandler):
         # Percentage of population to aim to vaccinate depending on priority
         # Priority = 1 --> 10% pop .... Priority = 5 --> 80%
         target_percent = [0.1, 0.2, 0.4, 0.6, 0.8]
-        dfPriority = dfPriority.sort_values(by=['PRIORITY'])
+        dfPriority = dfPriority.sort_values(by=['PRIORITY'], ascending=False)
 
         # Prioritize districts with higher priority and distribute vaccines there first
         while priority > 0:
             priority_results = dfPriority.loc[dfPriority['PRIORITY'] == priority]
             for ind in dfPriority.index:
-                print('total pop')
-                print(dfPriority.loc[ind,'TOTAL_POP'])
-                print('pop vaccinated')
-                print(dfPriority.loc[ind, 'POP_VACCINATED'])
-                print('num_vaccines')
-                print(num_vaccines)
                 num_vax_needed = (dfPriority.loc[ind,'TOTAL_POP'] * target_percent[priority - 1]) - dfPriority.loc[ind, 'POP_VACCINATED']
                 if (num_vaccines > 0):
                     if (num_vaccines >= num_vax_needed):
@@ -183,8 +177,8 @@ class MyServer(BaseHTTPRequestHandler):
                 else: 
                     distributed = 0
                 # TODO: fix     
-                dfNumVaccine = dfNumVaccine.append({'DISTRICT': dfPriority['DISTRICT'],'PRIORITY': dfPriority.loc['PRIORITY'],
-                            'CAMPAIGN_LENGTH': dfPriority['CAMPAIGN_LENGTH'],'NUM_VACCINE': distributed}, ignore_index = True)
+                dfNumVaccine = dfNumVaccine.append({'DISTRICT': dfPriority.loc[ind, 'DISTRICT'],'PRIORITY': dfPriority.loc[ind, 'PRIORITY'],
+                            'CAMPAIGN_LENGTH': dfPriority.loc[ind, 'CAMPAIGN_LENGTH'],'NUM_VACCINE': distributed}, ignore_index = True)
             priority -= 1
 
         # Convert results (district, campaign length, num vaccines distributed etc) to json     
