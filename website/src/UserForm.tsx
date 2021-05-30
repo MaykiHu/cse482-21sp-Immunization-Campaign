@@ -188,7 +188,7 @@ class UserForm extends Component<UserFormProps, UserFormState> {
             .catch(error => {
                 console.error(error)
             })
-            await this.delay(1000);
+            await this.delay(3000);
             let link = document.createElement('a'); // Create link
             link.href = "./Map";
             link.click(); // Redirects to map
