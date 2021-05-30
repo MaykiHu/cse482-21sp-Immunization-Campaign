@@ -10,15 +10,15 @@ import dbConnect as db # this is our db connect to get to our Azure sql db
 
 hostName = 'localhost'
 serverPort = 8080
+abbrevs = {"Uganda": "UG", "Kenya": "KE", "Mali": "MAL", "Zimbabwe": "ZIM", "Benin": "BE"}
+total_doses = 0
+num_vaccines = None # number of vaccines inputted by user
+country = None
 dfCovid = None
 dfGeneral = None
 dfState = None
-abbrevs = {"Uganda": "UG", "Kenya": "KE", "Mali": "MAL", "Zimbabwe": "ZIM", "Benin": "BE"}
-total_doses = 0
-dfPriority = pd.DataFrame(columns = ['DISTRICT','PRIORITY', 'TOTAL_POP', 'POP_VACCINATED', 'CAMPAIGN_LENGTH'])
-dfNumVaccine = pd.DataFrame(columns = ['DISTRICT','PRIORITY','CAMPAIGN_LENGTH','NUM_VACCINE', 'POP_TO_VACC'])
-num_vaccines = None # number of vaccines inputted by user
-country = None
+dfPriority = pd.DataFrame(columns = ['DISTRICT','PRIORITY', 'TOTAL_POP', 'POP_VACCINATED', 'CAMPAIGN_LENGTH', 'ADDITIONAL_STAFF_NEED'])
+dfNumVaccine = pd.DataFrame(columns = ['DISTRICT','PRIORITY','CAMPAIGN_LENGTH','NUM_VACCINE', 'POP_TO_VACC', 'ADDITIONAL_STAFF_NEED'])
 dfPrevCampaigns = None
 dfData = None
 
@@ -145,15 +145,13 @@ class MyServer(BaseHTTPRequestHandler):
         vacc_admin_per_day = 10 * 60 * (1 / dfCovid.loc[distr, 'MIN_TO_ADMIN_VACC']) * 2 * dfGeneral.loc[distr, 'NUM_VACCINE_SITES']
         campaign_length = int(num_to_vaccinate / vacc_admin_per_day)
 
-        # TODO: factor in num of staff available
-        # have x num of locations, have y num of staff, 
-        # y / 4 >= x? 
-        # staff needed = num_to_vaccinate 
-       # current_staff = dfCovid.loc[distr, 'NUM_STAFF']
-        #total_staff_needed = 
-
+        # Factor in num of staff available
+        current_num_staff = dfCovid.loc[distr, 'NUM_STAFF']
+        min_staff_needed = dfGeneral.loc[distr, 'NUM_VACCINE_SITES'] * 4
+        
         dfPriority = dfPriority.append({'DISTRICT': distr,'PRIORITY': priority, 'TOTAL_POP': true_pop, 
-                    'POP_VACCINATED': dfCovid.loc[distr, 'NUM_VACCINATED'], 'CAMPAIGN_LENGTH': campaign_length}, ignore_index = True)
+                    'POP_VACCINATED': dfCovid.loc[distr, 'NUM_VACCINATED'], 'CAMPAIGN_LENGTH': campaign_length, 
+                    'ADDITIONAL_STAFF_NEED': max(0, min_staff_needed - current_num_staff)}, ignore_index = True)
                     
     def alloc_vaccines(self):
         global dfPriority
@@ -185,7 +183,7 @@ class MyServer(BaseHTTPRequestHandler):
                 pop_to_vacc = int((dfPriority.loc[ind,'TOTAL_POP'] * 0.80) - dfPriority.loc[ind, 'POP_VACCINATED'])
                 dfNumVaccine = dfNumVaccine.append({'DISTRICT': dfPriority.loc[ind, 'DISTRICT'],'PRIORITY': dfPriority.loc[ind, 'PRIORITY'],
                             'CAMPAIGN_LENGTH': dfPriority.loc[ind, 'CAMPAIGN_LENGTH'],'NUM_VACCINE': distributed, 
-                            'POP_TO_VACC': pop_to_vacc }, ignore_index = True)
+                            'POP_TO_VACC': pop_to_vacc, 'ADDITIONAL_STAFF_NEED': dfPriority.loc[ind, 'ADDITIONAL_STAFF_NEED']}, ignore_index = True)
             priority -= 1
 
     def do_POST(self) :
@@ -205,16 +203,16 @@ class MyServer(BaseHTTPRequestHandler):
             global dfCovid
             # set index so we can lookup rows by district
             dfCovid = pd.read_csv(BytesIO(fileItem.value)).set_index('DISTRICTS') 
-            print(dfCovid)
-            print()
+            #print(dfCovid)
+            #print()
             
             # Grab general stats file
             fileItem = form['generalFile']
             generalName = fileItem.filename
             global dfGeneral
             dfGeneral = pd.read_csv(BytesIO(fileItem.value)).set_index('DISTRICTS')
-            print(dfGeneral)
-            print()
+            #print(dfGeneral)
+            #print()
 
             # Grab stats from input (country, num vaccines, prev campaigns)
             fileItem = form['stateFile']
@@ -232,9 +230,9 @@ class MyServer(BaseHTTPRequestHandler):
             dfPrevCampaigns = pd.DataFrame(prev_campaigns_list, columns=['DISTRICTS', 'FINISHED'])
             dfPrevCampaigns = dfPrevCampaigns.set_index('DISTRICTS') #Lookup by district       
             retString = "" + covidName + "," + stateName
-            print(dfPrevCampaigns)
-            print()
-            print(retString)
+            #print(dfPrevCampaigns)
+            #print()
+            #print(retString)
             # self.wfile.write(bytes(retString, "utf-8"))
          
             # Calculate priority for each district
@@ -242,14 +240,14 @@ class MyServer(BaseHTTPRequestHandler):
             for district in dfData.index.values:
                  self.priority_score(district)
             
-            print()
-            print(dfPriority)
+            #print()
+            #print(dfPriority)
             self.alloc_vaccines() # allocate vaccine to districts
             #print(dfNumVaccine)
             # Convert results to json     
             dfjson = dfNumVaccine.to_json(indent=4, orient='index')
             self.wfile.write(bytes(dfjson, "utf-8"))
-            print(dfjson)
+            #print(dfjson)
 
 
 if __name__ == "__main__":        
