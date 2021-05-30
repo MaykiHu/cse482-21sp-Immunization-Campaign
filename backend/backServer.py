@@ -169,7 +169,7 @@ class MyServer(BaseHTTPRequestHandler):
             priority_results = dfPriority.loc[dfPriority['PRIORITY'] == priority]
             for ind in priority_results.index:
                 # (Target pop to vaccinate - already vaccinated) * 2 doses per person
-                num_vax_needed = ((priority_results.loc[ind,'TOTAL_POP'] * target_percent[priority - 1]) - priority_results.loc[ind, 'POP_VACCINATED']) * 2
+                num_vax_needed = ((dfPriority.loc[ind,'TOTAL_POP'] * target_percent[priority - 1]) - dfPriority.loc[ind, 'POP_VACCINATED']) * 2
                 if (num_vaccines > 0):
                     if (num_vaccines >= num_vax_needed):
                         num_vaccines -= num_vax_needed
@@ -180,10 +180,10 @@ class MyServer(BaseHTTPRequestHandler):
                 else: 
                     distributed = 0
                 # number of people to vacciante to reach herd immunity (80%)  
-                pop_to_vacc = int((priority_results.loc[ind,'TOTAL_POP'] * 0.80) - priority_results.loc[ind, 'POP_VACCINATED'])
-                dfNumVaccine = dfNumVaccine.append({'DISTRICT': priority_results.loc[ind, 'DISTRICT'],'PRIORITY': priority_results.loc[ind, 'PRIORITY'],
-                            'CAMPAIGN_LENGTH': priority_results.loc[ind, 'CAMPAIGN_LENGTH'],'NUM_VACCINE': distributed, 
-                            'POP_TO_VACC': pop_to_vacc, 'ADDITIONAL_STAFF_NEED': priority_results.loc[ind, 'ADDITIONAL_STAFF_NEED']}, ignore_index = True)
+                pop_to_vacc = int((dfPriority.loc[ind,'TOTAL_POP'] * 0.80) - dfPriority.loc[ind, 'POP_VACCINATED'])
+                dfNumVaccine = dfNumVaccine.append({'DISTRICT': dfPriority.loc[ind, 'DISTRICT'],'PRIORITY': dfPriority.loc[ind, 'PRIORITY'],
+                            'CAMPAIGN_LENGTH': dfPriority.loc[ind, 'CAMPAIGN_LENGTH'],'NUM_VACCINE': distributed, 
+                            'POP_TO_VACC': pop_to_vacc, 'ADDITIONAL_STAFF_NEED': dfPriority.loc[ind, 'ADDITIONAL_STAFF_NEED']}, ignore_index = True)
             priority -= 1
 
     def do_POST(self) :
@@ -196,18 +196,23 @@ class MyServer(BaseHTTPRequestHandler):
         if (self.path == "/results") :
             # Do what you wish with file_content
             fileItem = form['covidFile']
-            covidName = fileItem.filename  # name of file
+            # name of file
+            covidName = fileItem.filename
             # file data as bytes
             #print(fileItem.value)
             global dfCovid
             # set index so we can lookup rows by district
             dfCovid = pd.read_csv(BytesIO(fileItem.value)).set_index('DISTRICTS') 
+            #print(dfCovid)
+            #print()
             
             # Grab general stats file
             fileItem = form['generalFile']
             generalName = fileItem.filename
             global dfGeneral
             dfGeneral = pd.read_csv(BytesIO(fileItem.value)).set_index('DISTRICTS')
+            #print(dfGeneral)
+            #print()
 
             # Grab stats from input (country, num vaccines, prev campaigns)
             fileItem = form['stateFile']
@@ -225,6 +230,9 @@ class MyServer(BaseHTTPRequestHandler):
             dfPrevCampaigns = pd.DataFrame(prev_campaigns_list, columns=['DISTRICTS', 'FINISHED'])
             dfPrevCampaigns = dfPrevCampaigns.set_index('DISTRICTS') #Lookup by district       
             retString = "" + covidName + "," + stateName
+            #print(dfPrevCampaigns)
+            #print()
+            #print(retString)
             # self.wfile.write(bytes(retString, "utf-8"))
          
             # Calculate priority for each district
@@ -232,10 +240,15 @@ class MyServer(BaseHTTPRequestHandler):
             for district in dfData.index.values:
                  self.priority_score(district)
             
-            # Allocate vaccine to districts and get results as json
-            self.alloc_vaccines()  
+            #print()
+            #print(dfPriority)
+            self.alloc_vaccines() # allocate vaccine to districts
+            #print(dfNumVaccine)
+            # Convert results to json     
             dfjson = dfNumVaccine.to_json(indent=4, orient='index')
             self.wfile.write(bytes(dfjson, "utf-8"))
+            #print(dfjson)
+
 
 
 if __name__ == "__main__":        
