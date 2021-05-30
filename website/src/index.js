@@ -3,7 +3,7 @@
    import { BrowserRouter, Route, Switch } from "react-router-dom";
 
    import Page1 from "./UserForm.tsx";
-   import Page2 from "./Map.tsx";
+   import Page2 from "./Map.jsx";
 
     const rootElement = document.getElementById("root");
     ReactDOM.render(

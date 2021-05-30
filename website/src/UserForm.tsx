@@ -5,7 +5,7 @@
 
 import React, {Component} from 'react';
 import "./UserForm.css";
-import "./Map";
+import "./Map.jsx";
 
 interface UserFormProps {
 
