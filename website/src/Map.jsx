@@ -7,7 +7,7 @@ class Map extends Component {
 
     componentDidMount() {
         // take out console.log, just wanted to make sure json is passed
-        console.log(this.props.location.state.jsonData);
+        console.log(Object.keys(this.props.location.state.jsonData).length);
     }
 
     onEachDistrict = (district, layer) =>{

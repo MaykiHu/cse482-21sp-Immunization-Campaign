@@ -250,10 +250,12 @@ class MyServer(BaseHTTPRequestHandler):
             #print(dfPriority)
             self.alloc_vaccines() # allocate vaccine to districts
             #print(dfNumVaccine)
-            # Convert results to json     
+            # Convert results to json
+
             dfjson = dfNumVaccine.to_json(indent=4, orient='index')
             self.wfile.write(bytes(dfjson, "utf-8"))
-            #print(dfjson)
+            print(len(dfjson))
+            print(dfjson)
 
 
 

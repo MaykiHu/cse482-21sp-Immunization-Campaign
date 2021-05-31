@@ -56,16 +56,21 @@ class UserForm extends Component<UserFormProps, UserFormState> {
     // Try to see why visuals are bugged on dropdown (non-essential)
     fetchCountryDropList() {
         // Get the JSON info from server on countries, sorted alphabetically
-        fetch("http://localhost:4567/countries")
-            .then((res) => {
-                return res.json();
+        fetch("http://localhost:8080/countries")
+        .then((res) => {
+            return res.json();
+        })
+        // Save the country info
+        .then(data => {
+            let countries = data.countries;
+            var countriesArr = [];
+            for (let i = 0; i < Object.keys(countries).length; i++) {
+                countriesArr.push(countries[i]);
+            }
+            this.setState({
+                countries: countriesArr,
             })
-            // Save the country info
-            .then(data => {
-                this.setState({
-                    countries: data.sort()
-                })
-            });
+        });
     }
 
     // Fetches districts based on country select
@@ -74,20 +79,21 @@ class UserForm extends Component<UserFormProps, UserFormState> {
         // if country has been selected
         if (countryValue !== "Choose a Country") {
             fetch("http://localhost:8080/" + countryValue + "-districts")
-                .then((res) => {
-                    return res.json();
+            .then((res) => {
+                return res.json();
+            })
+            // Parse and save the districts from JSON into an array
+            .then(data => {
+                let districts = data.District;
+                var districtsArr = [];
+                for (let i = 0; i < Object.keys(districts).length; i++) {
+                    districtsArr.push(districts[i]);
+                }
+                console.log(districtsArr.length);
+                this.setState({
+                    districts: districtsArr,
                 })
-                // Parse and save the districts from JSON into an array
-                .then(data => {
-                    let districts = data.District;
-                    var districtsArr = [];
-                    for (let i = 0; i < Object.keys(districts).length; i++) {
-                        districtsArr.push(districts[i]);
-                    }
-                    this.setState({
-                        districts: districtsArr,
-                    })
-                });
+            });
         }
     }
 
@@ -175,10 +181,10 @@ class UserForm extends Component<UserFormProps, UserFormState> {
             Array.from(this.state.checkedDistricts.entries())])], "states.json");
         const formData = new FormData()
             formData.append('stateFile', stateFile)
-        if (this!.state.generalFile !== null) {
+        if (this.state.generalFile !== null) {
             formData.append('generalFile', this.state.generalFile)
         }
-        if (this!.state.covidFile !== null) {
+        if (this.state.covidFile !== null) {
             formData.append('covidFile', this.state.covidFile)
         }
         fetch('http://localhost:8080/results', {
@@ -186,13 +192,17 @@ class UserForm extends Component<UserFormProps, UserFormState> {
             body: formData
         })
         .then((res) => {
-          return res.json();
+          const resJson = res.json();
+          console.log(resJson);
+          return resJson;
         })
         // Redirects to /Map w/ the jsonData from results
         // in Map component, access jsonData by:
         // this.props.location.state.jsonData
         .then((data) => {
-           history.push({pathname: "/Map", state: {jsonData: data}});
+            console.log(data);
+            console.log(Object.keys(data).length);
+            history.push({pathname: "/Map", state: {jsonData: data}});
          })
         .catch(error => {
             console.error(error)
