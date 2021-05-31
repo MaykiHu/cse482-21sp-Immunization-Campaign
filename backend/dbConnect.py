@@ -5,11 +5,10 @@ import numpy as np
 from sqlalchemy import create_engine
 
 # 1. Constants
-AZUREUID =  # Azure SQL database userid
+AZUREUID = # Azure SQL database userid
 AZUREPWD =  # Azure SQL database password
-AZURESRV =  # Azure SQL database server name (fully qualified)
-AZUREDB =   # Azure SQL database name (if it does not exit, pandas will create it)
-TABLE =     # Azure SQL database table name
+AZURESRV =   # Azure SQL database server name (fully qualified)
+AZUREDB =    # Azure SQL database name (if it does not exit, pandas will create it)
 DRIVER =    # ODBC Driver
 engn = None
 
