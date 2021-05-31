@@ -162,7 +162,7 @@ class MyServer(BaseHTTPRequestHandler):
         # Percentage of population to aim to vaccinate depending on priority
         # Priority = 1 --> 10% pop .... Priority = 5 --> 80%
         target_percent = [0.1, 0.2, 0.4, 0.6, 0.8]
-        dfPriority = dfPriority.sort_values(by=['PRIORITY'], ascending=False)
+        dfPriority = dfPriority.sort_values(by=['PRIORITY','TOTAL_POP'], ascending=False)
 
         # Prioritize districts with higher priority and distribute vaccines there first
         while priority > 0:
