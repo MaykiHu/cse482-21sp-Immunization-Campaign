@@ -6,6 +6,7 @@
 import React, {Component} from 'react';
 import "./UserForm.css";
 import "./Map.jsx";
+import history from "./history";
 
 interface UserFormProps {
 
@@ -19,7 +20,7 @@ interface UserFormState {
     vaccineCount: number | string,  // number of vaccines (saved as number)
     covidFile: File | null,
     generalFile: File | null,
-    }
+}
 
 class UserForm extends Component<UserFormProps, UserFormState> {
 
@@ -180,30 +181,22 @@ class UserForm extends Component<UserFormProps, UserFormState> {
         if (this!.state.covidFile !== null) {
             formData.append('covidFile', this.state.covidFile)
         }
-        (async () => {
-            await fetch('http://localhost:8080/results', {
-                method: 'POST',
-                body: formData
-            })
-            .then((res) => {
-              return res.json();
-            })
-            .then((data) => {
-               console.log(data);
-             })
-//             .then(data => {
-//                console.log(data);
-//             })
-            .catch(error => {
-                console.error(error)
-            })
-
-            await this.delay(3000);
-
-            let link = document.createElement('a'); // Create link
-            link.href = "./Map";
-            //link.click(); // Redirects to map
-        })();
+        fetch('http://localhost:8080/results', {
+            method: 'POST',
+            body: formData
+        })
+        .then((res) => {
+          return res.json();
+        })
+        // Redirects to /Map w/ the jsonData from results
+        // in Map component, access jsonData by:
+        // this.props.location.state.jsonData
+        .then((data) => {
+           history.push({pathname: "/Map", state: {jsonData: data}});
+         })
+        .catch(error => {
+            console.error(error)
+        });
     }
 
     // For downloading files, fetching to download from fileName
