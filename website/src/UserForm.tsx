@@ -19,7 +19,7 @@ interface UserFormState {
     vaccineCount: number | string,  // number of vaccines (saved as number)
     covidFile: File | null,
     generalFile: File | null,
-}
+    }
 
 class UserForm extends Component<UserFormProps, UserFormState> {
 
@@ -181,17 +181,28 @@ class UserForm extends Component<UserFormProps, UserFormState> {
             formData.append('covidFile', this.state.covidFile)
         }
         (async () => {
-            fetch('http://localhost:8080/results', {
+            await fetch('http://localhost:8080/results', {
                 method: 'POST',
                 body: formData
             })
+            .then((res) => {
+              return res.json();
+            })
+            .then((data) => {
+               console.log(data);
+             })
+//             .then(data => {
+//                console.log(data);
+//             })
             .catch(error => {
                 console.error(error)
             })
+
             await this.delay(3000);
+
             let link = document.createElement('a'); // Create link
             link.href = "./Map";
-            link.click(); // Redirects to map
+            //link.click(); // Redirects to map
         })();
     }
 

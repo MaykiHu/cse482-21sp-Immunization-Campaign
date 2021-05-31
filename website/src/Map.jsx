@@ -8,12 +8,12 @@ class Map extends Component {
 
 onEachDistrict = (district, layer) =>{
     const districtName = district.properties["2016"]
-    console.log(district);
+    //console.log(district);
     layer.bindPopup(districtName);
 }
 
   render() {
-  console.log(districts)
+  //console.log(districts)
     return (
 //       <MapContainer center={[1.347532, 32.510201]} zoom={13} scrollWheelZoom={true}>
 //         <TileLayer
