@@ -40,6 +40,12 @@ class MyServer(BaseHTTPRequestHandler):
             dfjson = dfsql.to_json(indent=4)
             self.wfile.write(bytes(dfjson, "utf-8"))
 
+        if(self.path == "/countries"):
+            query = 'SELECT * FROM countries'
+            dfcountries = db.run_query(query)
+            dfjson = dfcountries.to_json(indent = 4)
+            self.wfile.write(bytes(dfjson, "utf-8"))
+
     def query_data(self):   
         # Get number of people under age 15 from database
         query1 = ('SELECT ft_level2 AS DISTRICTS, SUM(fi_pop_under15) AS UNDER15 FROM {country}_ADMIN_AREAS GROUP BY ft_level2'
