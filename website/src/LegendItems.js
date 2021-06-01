@@ -27,7 +27,7 @@ var legendItems = [
   ),
 
   new LegendItem(
-    "Priority 2 (Lower Risk)",
+    "Priority 2 (Low Risk)",
     // "#FF5733",
     "rgba(255, 87, 51, 0.7)",
     (cases) => cases >= 50_000 && cases < 200_000
