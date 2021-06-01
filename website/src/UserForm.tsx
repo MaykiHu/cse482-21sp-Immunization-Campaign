@@ -170,40 +170,70 @@ class UserForm extends Component<UserFormProps, UserFormState> {
         return new Promise(resolve => setTimeout(resolve, ms));
     }
 
+    // Checks if user submitted form is valid
+    // @return true if valid, false w/ alert of what's missing
+    isValidSubmission() {
+        var noErrorMsg = "Please do the following before submitting: \n\n"
+        var errorMessage = noErrorMsg;
+        if (this.state.countryValue === "Choose a Country") {
+            errorMessage += "- Choose your Country of Interest\n";
+        }
+        if (this.state.vaccineCount === "") {
+            errorMessage += "- Enter a non-zero amount of vaccine doses \n";
+        }
+        if (this.state.covidFile == null) {
+            errorMessage += "- Upload our COVID Stats Template \n";
+        }
+        if (this.state.generalFile == null) {
+            errorMessage += "- Upload our General Stats Template \n";
+        }
+        if (errorMessage !== noErrorMsg) {  // User didn't submit required
+            alert(errorMessage);
+            return false;
+        }
+        return true;
+    }
+
     // Handles uploading the state of the website to backend for planning
     handleSubmit = (event: any) => {
         event.preventDefault();
-        // Send to backend (local atm), the JSON stringified states
-        // and any user uploads
-        var stateFile = new File([JSON.stringify([this.state.countryValue,
-            this.state.vaccineCount,
-            Array.from(this.state.checkedDistricts.entries())])], "states.json");
-        const formData = new FormData()
-            formData.append('stateFile', stateFile)
-        if (this.state.generalFile !== null) {
-            formData.append('generalFile', this.state.generalFile)
+
+        // Send to submit for planning + Map if user submitted all fields
+        // Do nothing but warn and prevent send if notValidSubmission
+        if (this.isValidSubmission()) {
+            // User can view their plan from algo on the Map
+            // Send to backend (local atm), the JSON stringified states
+            // and any user uploads
+            var stateFile = new File([JSON.stringify([this.state.countryValue,
+                this.state.vaccineCount,
+                Array.from(this.state.checkedDistricts.entries())])], "states.json");
+            const formData = new FormData()
+                formData.append('stateFile', stateFile)
+            if (this.state.generalFile !== null) {
+                formData.append('generalFile', this.state.generalFile)
+            }
+            if (this.state.covidFile !== null) {
+                formData.append('covidFile', this.state.covidFile)
+            }
+            const reqOptions = {
+                method: 'POST',
+                body: formData
+            };
+            fetch('http://localhost:8080/results', reqOptions)
+            .then((res) => {
+              const resJson = res.json();
+              return resJson;
+            })
+            // Redirects to /Map w/ the jsonData from results
+            // in Map component, access jsonData by:
+            // this.props.location.state.jsonData
+            .then((data) => {
+                history.push({pathname: "/Map", state: {jsonData: data}});
+             })
+            .catch(error => {
+                console.error(error)
+            });
         }
-        if (this.state.covidFile !== null) {
-            formData.append('covidFile', this.state.covidFile)
-        }
-        const reqOptions = {
-            method: 'POST',
-            body: formData
-        };
-        fetch('http://localhost:8080/results', reqOptions)
-        .then((res) => {
-          const resJson = res.json();
-          return resJson;
-        })
-        // Redirects to /Map w/ the jsonData from results
-        // in Map component, access jsonData by:
-        // this.props.location.state.jsonData
-        .then((data) => {
-            history.push({pathname: "/Map", state: {jsonData: data}});
-         })
-        .catch(error => {
-            console.error(error)
-        });
     }
 
     // For downloading files, fetching to download from fileName
@@ -252,7 +282,7 @@ class UserForm extends Component<UserFormProps, UserFormState> {
                             pattern="[0-9]*"
                             value={this.state.vaccineCount}
                             onChange={this.handleVaccineCount}
-                            placeholder="Enter number of vaccines"
+                            placeholder="Enter number of doses"
                         />
                     </div>
                     <div id="districts-container">
