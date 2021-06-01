@@ -89,7 +89,6 @@ class UserForm extends Component<UserFormProps, UserFormState> {
                 for (let i = 0; i < Object.keys(districts).length; i++) {
                     districtsArr.push(districts[i]);
                 }
-                console.log(districtsArr.length);
                 this.setState({
                     districts: districtsArr,
                 })
@@ -171,42 +170,70 @@ class UserForm extends Component<UserFormProps, UserFormState> {
         return new Promise(resolve => setTimeout(resolve, ms));
     }
 
+    // Checks if user submitted form is valid
+    // @return true if valid, false w/ alert of what's missing
+    isValidSubmission() {
+        var noErrorMsg = "Please do the following before submitting: \n\n"
+        var errorMessage = noErrorMsg;
+        if (this.state.countryValue === "Choose a Country") {
+            errorMessage += "- Choose your Country of Interest\n";
+        }
+        if (this.state.vaccineCount === "") {
+            errorMessage += "- Enter a non-zero amount of vaccine doses \n";
+        }
+        if (this.state.covidFile == null) {
+            errorMessage += "- Upload our COVID Stats Template \n";
+        }
+        if (this.state.generalFile == null) {
+            errorMessage += "- Upload our General Stats Template \n";
+        }
+        if (errorMessage !== noErrorMsg) {  // User didn't submit required
+            alert(errorMessage);
+            return false;
+        }
+        return true;
+    }
+
     // Handles uploading the state of the website to backend for planning
     handleSubmit = (event: any) => {
         event.preventDefault();
-        // Send to backend (local atm), the JSON stringified states
-        // and any user uploads
-        var stateFile = new File([JSON.stringify([this.state.countryValue,
-            this.state.vaccineCount,
-            Array.from(this.state.checkedDistricts.entries())])], "states.json");
-        const formData = new FormData()
-            formData.append('stateFile', stateFile)
-        if (this.state.generalFile !== null) {
-            formData.append('generalFile', this.state.generalFile)
+
+        // Send to submit for planning + Map if user submitted all fields
+        // Do nothing but warn and prevent send if notValidSubmission
+        if (this.isValidSubmission()) {
+            // User can view their plan from algo on the Map
+            // Send to backend (local atm), the JSON stringified states
+            // and any user uploads
+            var stateFile = new File([JSON.stringify([this.state.countryValue,
+                this.state.vaccineCount,
+                Array.from(this.state.checkedDistricts.entries())])], "states.json");
+            const formData = new FormData()
+                formData.append('stateFile', stateFile)
+            if (this.state.generalFile !== null) {
+                formData.append('generalFile', this.state.generalFile)
+            }
+            if (this.state.covidFile !== null) {
+                formData.append('covidFile', this.state.covidFile)
+            }
+            const reqOptions = {
+                method: 'POST',
+                body: formData
+            };
+            fetch('http://localhost:8080/results', reqOptions)
+            .then((res) => {
+              const resJson = res.json();
+              return resJson;
+            })
+            // Redirects to /Map w/ the jsonData from results
+            // in Map component, access jsonData by:
+            // this.props.location.state.jsonData
+            .then((data) => {
+                history.push({pathname: "/Map", state: {jsonData: data}});
+             })
+            .catch(error => {
+                console.error(error)
+            });
         }
-        if (this.state.covidFile !== null) {
-            formData.append('covidFile', this.state.covidFile)
-        }
-        fetch('http://localhost:8080/results', {
-            method: 'POST',
-            body: formData
-        })
-        .then((res) => {
-          const resJson = res.json();
-          console.log(resJson);
-          return resJson;
-        })
-        // Redirects to /Map w/ the jsonData from results
-        // in Map component, access jsonData by:
-        // this.props.location.state.jsonData
-        .then((data) => {
-            console.log(data);
-            console.log(Object.keys(data).length);
-            history.push({pathname: "/Map", state: {jsonData: data}});
-         })
-        .catch(error => {
-            console.error(error)
-        });
     }
 
     // For downloading files, fetching to download from fileName
@@ -235,7 +262,7 @@ class UserForm extends Component<UserFormProps, UserFormState> {
                     <div id="dropdown">
                         <div id="country-dropdown">
                             <p id="category-title">Country of Interest</p>
-                            <p id="category-desc">Description Here</p>
+                            <p id="category-desc">Let us know which country you'd like to plan a campaign for</p>
                             <select value={this.state.countryValue} onChange={this.handleCountryChange}>
                                 <option value="Choose a Country" disabled>Choose a Country</option>
                                 {this.state.countries.map((country) =>
@@ -245,7 +272,7 @@ class UserForm extends Component<UserFormProps, UserFormState> {
                     </div>
                     <div id="vaccine-inventory">
                         <p id="category-title">Vaccine Inventory</p>
-                        <p id="category-desc">Description Here</p>
+                        <p id="category-desc">Let us know how many doses of two-dose vaccines you have <br></br>(ex: Pfizer 1 vial = 6 doses)</p>
                         <input
                             type="text"
                             onPaste={e=>{
@@ -255,12 +282,12 @@ class UserForm extends Component<UserFormProps, UserFormState> {
                             pattern="[0-9]*"
                             value={this.state.vaccineCount}
                             onChange={this.handleVaccineCount}
-                            placeholder="Enter number of vaccines"
+                            placeholder="Enter number of doses"
                         />
                     </div>
                     <div id="districts-container">
                         <p id="category-title">Previous Campaigns Held</p>
-                        <p id="category-desc">Description Here</p>
+                        <p id="category-desc">Let us know which districts you've started/completed campaigns in</p>
                         <div id="districts-list-container">
                             {
                                 this.state.districts.map(district => (
@@ -280,7 +307,9 @@ class UserForm extends Component<UserFormProps, UserFormState> {
                     </div>
                     <div id="covid-stats-container">
                         <p id="category-title">COVID Statistics Regarding Country</p>
-                        <p id="category-desc">Description Here</p>
+                        <p id="category-desc">Let us know more on this country's COVID-related stats by uploading
+                            our template
+                        </p>
                         <label id="download-btn"
                             onClick={(event) => this.download(event, "covid_stats_template.csv")}>
                             Download COVID Stats Template
@@ -293,7 +322,9 @@ class UserForm extends Component<UserFormProps, UserFormState> {
                     </div>
                     <div id="general-stats-container">
                         <p id="category-title">General Statistics Regarding Country</p>
-                        <p id="category-desc">Description Here</p>
+                        <p id="category-desc">Let us know more about general stats of this country by uploading
+                            our template
+                        </p>
                         <label id="download-btn"
                             onClick={(event) => this.download(event, "general_stats_template.csv")}>
                             Download General Stats Template
