@@ -168,8 +168,10 @@ class MyServer(BaseHTTPRequestHandler):
         # Percentage of population to aim to vaccinate depending on priority
         # Priority = 1 --> 10% pop .... Priority = 5 --> 80%
         target_percent = [0.1, 0.2, 0.4, 0.6, 0.8]
-        dfPriority = dfPriority.sort_values(by=['PRIORITY'], ascending=False)
         dfNumVaccine = pd.DataFrame(columns = ['DISTRICT','PRIORITY','CAMPAIGN_LENGTH','NUM_VACCINE', 'POP_TO_VACC', 'ADDITIONAL_STAFF_NEED'])
+
+        dfPriority = dfPriority.sort_values(by=['PRIORITY','TOTAL_POP'], ascending=False)
+
         # Prioritize districts with higher priority and distribute vaccines there first
         while priority > 0:
             priority_results = dfPriority.loc[dfPriority['PRIORITY'] == priority]
@@ -185,7 +187,7 @@ class MyServer(BaseHTTPRequestHandler):
                         num_vaccines = 0
                 else:
                     distributed = 0
-                # number of people to vacciante to reach herd immunity (80%)
+                # number of people to vaccinate to reach herd immunity (80%)
                 pop_to_vacc = int((dfPriority.loc[ind,'TOTAL_POP'] * 0.80) - dfPriority.loc[ind, 'POP_VACCINATED'])
                 dfNumVaccine = dfNumVaccine.append({'DISTRICT': dfPriority.loc[ind, 'DISTRICT'],'PRIORITY': dfPriority.loc[ind, 'PRIORITY'],
                                                     'CAMPAIGN_LENGTH': dfPriority.loc[ind, 'CAMPAIGN_LENGTH'],'NUM_VACCINE': distributed,
