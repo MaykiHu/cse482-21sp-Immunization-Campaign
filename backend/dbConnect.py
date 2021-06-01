@@ -5,11 +5,11 @@ import numpy as np
 from sqlalchemy import create_engine
 
 # 1. Constants
-AZUREUID = "campaigntool482-admin" # Azure SQL database userid
-AZUREPWD =  "cse482CPT"# Azure SQL database password
-AZURESRV =  "campaigntool482-server.database.windows.net" # Azure SQL database server name (fully qualified)
-AZUREDB =   "campaigntool482-db" # Azure SQL database name (if it does not exit, pandas will create it)
-DRIVER =    "ODBC Driver 17 for SQL Server"# ODBC Driver
+AZUREUID =  # Azure SQL database userid
+AZUREPWD =  # Azure SQL database password
+AZURESRV =  # Azure SQL database server name (fully qualified)
+AZUREDB =   # Azure SQL database name (if it does not exit, pandas will create it)
+DRIVER =    # ODBC Driver
 engn = None
 
 def connect():
