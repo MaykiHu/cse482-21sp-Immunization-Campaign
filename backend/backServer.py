@@ -17,8 +17,8 @@ country = None
 dfCovid = None
 dfGeneral = None
 dfState = None
-dfPriority = pd.DataFrame(columns = ['DISTRICT','PRIORITY', 'TOTAL_POP', 'POP_VACCINATED', 'CAMPAIGN_LENGTH', 'ADDITIONAL_STAFF_NEED'])
-dfNumVaccine = pd.DataFrame(columns = ['DISTRICT','PRIORITY','CAMPAIGN_LENGTH','NUM_VACCINE', 'POP_TO_VACC', 'ADDITIONAL_STAFF_NEED'])
+dfPriority = None
+dfNumVaccine = None
 dfPrevCampaigns = None
 dfData = None
 
@@ -26,7 +26,7 @@ class MyServer(BaseHTTPRequestHandler):
     def _set_headers(self):
         self.send_response(200)
         #self.send_header("Content-type", "text/json")
-        self.send_header('Access-Control-Allow-Origin', 'http://localhost:3000')
+        self.send_header("Access-Control-Allow-Origin", "http://localhost:3000")
         self.end_headers()
 
     def do_GET(self):
@@ -46,25 +46,25 @@ class MyServer(BaseHTTPRequestHandler):
             dfjson = dfcountries.to_json(indent = 4)
             self.wfile.write(bytes(dfjson, "utf-8"))
 
-    def query_data(self):   
+    def query_data(self):
         # Get number of people under age 15 from database
         query1 = ('SELECT ft_level2 AS DISTRICTS, SUM(fi_pop_under15) AS UNDER15 FROM {country}_ADMIN_AREAS GROUP BY ft_level2'
-                .format(country=abbrevs[country])) 
+                  .format(country=abbrevs[country]))
         dfPop_under15 = db.run_query(query1).set_index('DISTRICTS')
 
         # Estimate population using database info. Add 15% of estimated count to account for error
         query2 = ('SELECT ft_level2 AS DISTRICTS, SUM(fi_tot_pop) AS POPULATION FROM {country}_FACILITIES GROUP BY ft_level2'
-                 .format(country=abbrevs[country]))
+                  .format(country=abbrevs[country]))
         dfTotal_pop = db.run_query(query2).set_index('DISTRICTS')
         global dfData
         dfData = dfPop_under15.join(dfTotal_pop) # DISTRICTS, UNDER15, POPULATION
 
-    def priority_score(self, distr): 
+    def priority_score(self, distr):
         global dfPriority
         risk = 0
         # If no data of pop_under15, use 0 not realistic but would need complete data or guess percentage
         pop_under15 = 0 if dfData.loc[distr, 'UNDER15'] else dfData.loc[distr, 'UNDER15']
-        
+
         estimated_pop = dfData.loc[distr, 'POPULATION']
         true_pop = estimated_pop + (estimated_pop * 0.15) # Add 15% to estimated to account for error
         campaign_held = distr in dfPrevCampaigns.index.values
@@ -82,16 +82,16 @@ class MyServer(BaseHTTPRequestHandler):
                 risk_score += 5
             elif percent_cases > 0.2 and percent_cases < 0.4:
                 risk_score += 7
-            
+
             # Population susceptibility: High population of kids under 15 means lower risk
             if (pop_under15 / true_pop) > 0.35:
                 risk_score += 3
             else:
                 risk_score += 5
-            
-            # Population susceptibility: High population of 60+ year olds means higher risk 
+
+            # Population susceptibility: High population of 60+ year olds means higher risk
             if (dfGeneral.loc[distr, 'PERCENT_POP_60+'] > 0.35):
-                risk_score += 7 
+                risk_score += 7
             else:
                 risk_score += 4
 
@@ -105,21 +105,21 @@ class MyServer(BaseHTTPRequestHandler):
             else:
                 risk_score += 10
 
-            # Future implementation: 
+            # Future implementation:
             # Geographical spread
             #   1. Higher density populations have higher risk. Need size of district
-            #   2. Look at neighboring districts and factor effects on this district 
+            #   2. Look at neighboring districts and factor effects on this district
             #      (e.g if nearby districts have outbreaks, priority increases)
 
             # Categorize into low (1), moderate (2), and high(3) risk based on risk_score
             if risk_score < 10:
-                risk = 1 
+                risk = 1
             elif risk_score >= 10 and risk_score < 18:
-                risk = 2 
+                risk = 2
             else:
-                risk = 3 
+                risk = 3
 
-        # Priority = [1-5]. 1 = low and 5 = high 
+        # Priority = [1-5]. 1 = low and 5 = high
         # COVID-19 Transmissions scenarios
         #   1. Community transmissions: cases > 50% pop
         #   2. Clusters of cases: cases > 30% pop
@@ -129,24 +129,24 @@ class MyServer(BaseHTTPRequestHandler):
         # Future implementation:
         #   Adjust population percentage levels to better reflect risk and priority
         if  percent_cases >= 0.5 and (risk == 3 or risk == 2):
-            priority = 5 
+            priority = 5
         elif (risk == 1 and percent_cases > 0.1) or (risk == 2 and percent_cases >= 0.3 and percent_cases < 0.5) :
             priority = 3
         elif (risk == 2 and percent_cases < 0.3) or (risk == 3 and percent_cases < 0.5):
             priority = 4
-        else: 
+        else:
             priority = 1
 
-        # STEP 2: Evaluation campaign capacity 
-        # Assumptions: 
+        # STEP 2: Evaluation campaign capacity
+        # Assumptions:
         #   Two dose vaccines
-        #   Vaccine locations open for 10 hours/day 
+        #   Vaccine locations open for 10 hours/day
         #   Each location site has min 4 people per team:
         #       - 2 people administering vaccine
         #       - 1 person recording information
         #       - 1 person mobilizing crowds)
         # Goal: Vaccinate >80% of population for herd immunity
-        # Future implementation: Account for facility's resupply interval and storage capacity 
+        # Future implementation: Account for facility's resupply interval and storage capacity
         num_to_vaccinate = (true_pop * 0.8) - dfCovid.loc[distr, 'NUM_VACCINATED']
         vacc_admin_per_day = 10 * 60 * (1 / dfCovid.loc[distr, 'MIN_TO_ADMIN_VACC']) * 2 * dfGeneral.loc[distr, 'NUM_VACCINE_SITES']
         campaign_length = int(num_to_vaccinate / vacc_admin_per_day)
@@ -154,11 +154,11 @@ class MyServer(BaseHTTPRequestHandler):
         # Factor in num of staff available
         current_num_staff = dfCovid.loc[distr, 'NUM_STAFF']
         min_staff_needed = dfGeneral.loc[distr, 'NUM_VACCINE_SITES'] * 4
-        
-        dfPriority = dfPriority.append({'DISTRICT': distr,'PRIORITY': priority, 'TOTAL_POP': true_pop, 
-                    'POP_VACCINATED': dfCovid.loc[distr, 'NUM_VACCINATED'], 'CAMPAIGN_LENGTH': campaign_length, 
-                    'ADDITIONAL_STAFF_NEED': max(0, min_staff_needed - current_num_staff)}, ignore_index = True)
-                    
+
+        dfPriority = dfPriority.append({'DISTRICT': distr,'PRIORITY': priority, 'TOTAL_POP': true_pop,
+                                        'POP_VACCINATED': dfCovid.loc[distr, 'NUM_VACCINATED'], 'CAMPAIGN_LENGTH': campaign_length,
+                                        'ADDITIONAL_STAFF_NEED': max(0, min_staff_needed - current_num_staff)}, ignore_index = True)
+
     def alloc_vaccines(self):
         global dfPriority
         global dfNumVaccine
@@ -169,7 +169,7 @@ class MyServer(BaseHTTPRequestHandler):
         # Priority = 1 --> 10% pop .... Priority = 5 --> 80%
         target_percent = [0.1, 0.2, 0.4, 0.6, 0.8]
         dfPriority = dfPriority.sort_values(by=['PRIORITY'], ascending=False)
-
+        dfNumVaccine = pd.DataFrame(columns = ['DISTRICT','PRIORITY','CAMPAIGN_LENGTH','NUM_VACCINE', 'POP_TO_VACC', 'ADDITIONAL_STAFF_NEED'])
         # Prioritize districts with higher priority and distribute vaccines there first
         while priority > 0:
             priority_results = dfPriority.loc[dfPriority['PRIORITY'] == priority]
@@ -183,14 +183,15 @@ class MyServer(BaseHTTPRequestHandler):
                     else:  # num_vaccines < num_vax_needed
                         distributed = num_vaccines
                         num_vaccines = 0
-                else: 
+                else:
                     distributed = 0
-                # number of people to vacciante to reach herd immunity (80%)  
+                # number of people to vacciante to reach herd immunity (80%)
                 pop_to_vacc = int((dfPriority.loc[ind,'TOTAL_POP'] * 0.80) - dfPriority.loc[ind, 'POP_VACCINATED'])
                 dfNumVaccine = dfNumVaccine.append({'DISTRICT': dfPriority.loc[ind, 'DISTRICT'],'PRIORITY': dfPriority.loc[ind, 'PRIORITY'],
-                            'CAMPAIGN_LENGTH': dfPriority.loc[ind, 'CAMPAIGN_LENGTH'],'NUM_VACCINE': distributed, 
-                            'POP_TO_VACC': pop_to_vacc, 'ADDITIONAL_STAFF_NEED': dfPriority.loc[ind, 'ADDITIONAL_STAFF_NEED']}, ignore_index = True)
+                                                    'CAMPAIGN_LENGTH': dfPriority.loc[ind, 'CAMPAIGN_LENGTH'],'NUM_VACCINE': distributed,
+                                                    'POP_TO_VACC': pop_to_vacc, 'ADDITIONAL_STAFF_NEED': dfPriority.loc[ind, 'ADDITIONAL_STAFF_NEED']}, ignore_index = True)
             priority -= 1
+
 
     def do_POST(self) :
         self._set_headers()
@@ -200,6 +201,9 @@ class MyServer(BaseHTTPRequestHandler):
             environ={'REQUEST_METHOD': 'POST'}
         )
         if (self.path == "/results") :
+            global dfPriority, dfNumVaccine
+            dfPriority = pd.DataFrame(columns = ['DISTRICT','PRIORITY', 'TOTAL_POP', 'POP_VACCINATED', 'CAMPAIGN_LENGTH', 'ADDITIONAL_STAFF_NEED'])
+            dfNumVaccine = pd.DataFrame(columns = ['DISTRICT','PRIORITY','CAMPAIGN_LENGTH','NUM_VACCINE', 'POP_TO_VACC', 'ADDITIONAL_STAFF_NEED'])
             # Do what you wish with file_content
             fileItem = form['covidFile']
             # name of file
@@ -208,10 +212,10 @@ class MyServer(BaseHTTPRequestHandler):
             #print(fileItem.value)
             global dfCovid
             # set index so we can lookup rows by district
-            dfCovid = pd.read_csv(BytesIO(fileItem.value)).set_index('DISTRICTS') 
+            dfCovid = pd.read_csv(BytesIO(fileItem.value)).set_index('DISTRICTS')
             #print(dfCovid)
             #print()
-            
+
             # Grab general stats file
             fileItem = form['generalFile']
             generalName = fileItem.filename
@@ -223,7 +227,7 @@ class MyServer(BaseHTTPRequestHandler):
             # Grab stats from input (country, num vaccines, prev campaigns)
             fileItem = form['stateFile']
             stateName = fileItem.filename
-            global dfState 
+            global dfState
             dfState = pd.read_json(BytesIO(fileItem.value))
 
             # Get districts where campaigns already held
@@ -234,18 +238,18 @@ class MyServer(BaseHTTPRequestHandler):
             global dfPrevCampaigns
             prev_campaigns_list = dfState[0][2]
             dfPrevCampaigns = pd.DataFrame(prev_campaigns_list, columns=['DISTRICTS', 'FINISHED'])
-            dfPrevCampaigns = dfPrevCampaigns.set_index('DISTRICTS') #Lookup by district       
+            dfPrevCampaigns = dfPrevCampaigns.set_index('DISTRICTS') #Lookup by district
             retString = "" + covidName + "," + stateName
             #print(dfPrevCampaigns)
             #print()
             #print(retString)
             # self.wfile.write(bytes(retString, "utf-8"))
-         
+
             # Calculate priority for each district
             self.query_data() # get data from db
             for district in dfData.index.values:
-                 self.priority_score(district)
-            
+                self.priority_score(district)
+
             #print()
             #print(dfPriority)
             self.alloc_vaccines() # allocate vaccine to districts
@@ -253,13 +257,13 @@ class MyServer(BaseHTTPRequestHandler):
             # Convert results to json
 
             dfjson = dfNumVaccine.to_json(indent=4, orient='index')
-            self.wfile.write(bytes(dfjson, "utf-8"))
-            print(len(dfjson))
             print(dfjson)
+            self.wfile.write(bytes(dfjson, "utf-8"))
+            pd.DataFrame.empty  # empty prev. saved data used in JSON
 
 
 
-if __name__ == "__main__":        
+if __name__ == "__main__":
     db.connect()
     webServer = HTTPServer((hostName, serverPort), MyServer)
     print("Server started http://%s:%s" % (hostName, serverPort))
