@@ -5,6 +5,7 @@
 import React, { Component } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, GeoJSON } from 'react-leaflet';
 import "./Map.css";
+import history from "./history";  // to redirect back to home
 import districts from "./Uganda-districts.json";
 import Legend from "./Legend.jsx";  // Credit
 import legendItems from "./LegendItems.js";  // Credit
@@ -56,10 +57,17 @@ class Map extends Component {
                                                  '#000000';
     }
 
+    // Handles when back button is pressed
+    // Redirects to home page
+    goBack() {
+        history.push("/");
+    }
+
       render() {
         return (
             <div>
-                <h1 style={{textAlign: "center"}}> Uganda Vaccine Allocation </h1>
+                <h1 id="app-title"> Uganda Vaccine Allocation </h1>
+                <button id="submit-button" onClick={this.goBack}> Plan More!</button>
                 <MapContainer center={[1.347532, 32.510201]} zoom={7} scrollWheelZoom={true}>
                     <Legend legendItems={legendItemsReverse} />
                     <GeoJSON style={this.districtStyle} data={districts.features} onEachFeature={this.onEachDistrict} />

@@ -2,5 +2,38 @@
     width: 100vw;
     height: 100vh;
     background: "white";
+}
 
+/* Font for buttons */
+#submit-button {
+    margin-left: 4%;
+    margin-right: 2%;
+    width: fit-content;
+    border-radius: 8px;
+    border: 2px solid #ccc;
+    background-image: linear-gradient( to bottom, #fff, #ccc );
+    font-weight: lighter;
+    font-size: 12px;
+    padding: 3px;
+    display: inline-flex;
+}
+
+/* For additional styling on submit button */
+#submit-button {
+    border-radius: 15px;
+    position: relative;
+    width: fit-content;
+    margin-bottom: 2%;
+    margin-left: 45%;
+    padding: 2%;
+    font-weight: bold;
+    font-size: 18px;
+    background-image: linear-gradient(to right, #FFFFE0 51%, #E0E0FF 100%);
+}
+
+/* For additional styling on submit button upon hover */
+#submit-button:hover {
+    cursor: pointer;
+    border-color: #3c7fb1;
+    background-image: linear-gradient(to left, #FFFFE0 51%, #E0E0FF 100%);
 }

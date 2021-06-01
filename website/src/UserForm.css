@@ -80,7 +80,7 @@ some space around the title and console font. :) */
     font-size: 12px;
     position: relative;
     float: right;
-    margin-right: 25%;
+    margin-right: 20%;
 }
 
 /* For styling of dropdowns and input alignment */
@@ -102,7 +102,7 @@ option {
 
 }
 
-/* Font for all buttons */
+/* Styling for all buttons */
 #download-btn, #upload-btn, #submit-button {
     margin-left: 4%;
     margin-right: 2%;
