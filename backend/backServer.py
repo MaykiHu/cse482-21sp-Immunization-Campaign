@@ -1,7 +1,5 @@
 # Python 3 server example
 from http.server import BaseHTTPRequestHandler, HTTPServer
-import time
-from urllib import parse
 import cgi
 from io import BytesIO
 import pandas as pd
@@ -12,6 +10,14 @@ hostName = 'localhost'
 serverPort = 8080
 abbrevs = {"Uganda": "UG", "Kenya": "KE", "Mali": "MAL", "Zimbabwe": "ZIM", "Benin": "BE"}
 total_doses = 0
+site_hours = 10 # hours sites are open for
+perc_herd_immunity = 0.8
+staff_per_site = 4
+
+# Percentage of population to aim to vaccinate depending on priority
+# Priority = 1 --> 10% pop .... Priority = 5 --> 80%
+target_percent = [0.1, 0.2, 0.4, 0.6, 0.8] 
+
 num_vaccines = None # number of vaccines inputted by user
 country = None
 dfCovid = None
@@ -72,70 +78,73 @@ class MyServer(BaseHTTPRequestHandler):
         percent_cases = dfCovid.loc[distr, 'NUM_CASES'] / true_pop
 
         # STEP 1: Evaulate population and impact of outbreak
-        if campaign_held or percent_vaccinated > 0.8:
+        if campaign_held or percent_vaccinated >= perc_herd_immunity:
             # Campaign successfully held or herd immunity (80%)
             priority = 1
         else:
             risk_score = 0
-            # Intensity and magnitude of transmission: High number of cases means higher priority
-            if percent_cases  < 0.2:
-                risk_score += 5
-            elif percent_cases > 0.2 and percent_cases < 0.4:
-                risk_score += 7
 
             # Population susceptibility: High population of kids under 15 means lower risk
-            if (pop_under15 / true_pop) > 0.35:
-                risk_score += 3
+            # Low weight 1x multiplier
+            if (pop_under15 / true_pop) > 0.30:
+                risk_score += 1 
+            elif (pop_under15 / true_pop) > 0.10:
+                risk_score += 2 
             else:
-                risk_score += 5
-
-            # Population susceptibility: High population of 60+ year olds means higher risk
-            if (dfGeneral.loc[distr, 'PERCENT_POP_60+'] > 0.35):
-                risk_score += 7
-            else:
-                risk_score += 4
+                risk_score += 3 
 
             # Population susceptibility: Account for percent of population already vaccinated
-            if percent_vaccinated < 0.8 and percent_vaccinated > 0.6:
-                risk_score += 3
-            elif percent_vaccinated < 0.6 and percent_vaccinated > 0.4:
-                risk_score += 6
+            # Mid weight 2x multiplier
+            if percent_vaccinated < 0.8 and percent_vaccinated > 0.6: 
+                risk_score += 2 # 60-80% vaccinated
+            elif percent_vaccinated < 0.6 and percent_vaccinated > 0.4: 
+                risk_score += 4 # 40-60% vaccinated
             elif percent_vaccinated < 0.4 and percent_vaccinated > 0.2:
+                risk_score += 6 # 20-40% vaccinated
+            else: # <20% vaccinated
                 risk_score += 8
+
+            # Population susceptibility: High population of 60+ year olds means higher risk
+            # Highest weight 3x multiplier
+            if (dfGeneral.loc[distr, 'PERCENT_POP_60+'] > 0.30):
+                risk_score += 9
+            elif (dfGeneral.loc[distr, 'PERCENT_POP_60+'] > 0.20):
+                risk_score += 6
             else:
-                risk_score += 10
+                risk_score += 3
 
             # Future implementation:
             # Geographical spread
-            #   1. Higher density populations have higher risk. Need size of district
+            #   1. Higher density populations have higher risk. Need area of district
             #   2. Look at neighboring districts and factor effects on this district
             #      (e.g if nearby districts have outbreaks, priority increases)
 
             # Categorize into low (1), moderate (2), and high(3) risk based on risk_score
-            if risk_score < 10:
+            if risk_score <= 12:
                 risk = 1
-            elif risk_score >= 10 and risk_score < 18:
+            elif risk_score > 12 and risk_score <= 15:
                 risk = 2
             else:
                 risk = 3
 
-        # Priority = [1-5]. 1 = low and 5 = high
-        # COVID-19 Transmissions scenarios
-        #   1. Community transmissions: cases > 50% pop
-        #   2. Clusters of cases: cases > 30% pop
-        #   3. Sporadic cases: cases > 10% pop
-        #   4. Little to no cases: < 10% pop
-        #
-        # Future implementation:
-        #   Adjust population percentage levels to better reflect risk and priority
-        if  percent_cases >= 0.5 and (risk == 3 or risk == 2):
-            priority = 5
-        elif (risk == 1 and percent_cases > 0.1) or (risk == 2 and percent_cases >= 0.3 and percent_cases < 0.5) :
-            priority = 3
-        elif (risk == 2 and percent_cases < 0.3) or (risk == 3 and percent_cases < 0.5):
-            priority = 4
-        else:
-            priority = 1
+            # Priority = [1-5]. 1 = low and 5 = high
+            # COVID-19 Transmissions scenarios
+            #   1. Community transmissions: cases > 30% pop
+            #   2. Clusters of cases: cases > 20% pop
+            #   3. Sporadic cases: cases > 5% pop
+            #   4. Little to no cases: < 5% pop
+            #
+            # Future implementation:
+            #   Adjust population percentage levels to better reflect risk and priority
+            #   Consult public health experts for more accurate percentage levels
+            if  percent_cases >= 0.3 and (risk == 3 or risk == 2):
+                priority = 5
+            elif (risk == 1 and percent_cases > 0.05) or (risk == 2 and percent_cases >= 0.20) :
+                priority = 3
+            elif (risk == 2 and percent_cases < 0.20) or (risk == 3 and percent_cases < 0.30):
+                priority = 4
+            else:
+                priority = 2 
 
         # STEP 2: Evaluation campaign capacity
         # Assumptions:
@@ -147,14 +156,14 @@ class MyServer(BaseHTTPRequestHandler):
         #       - 1 person mobilizing crowds)
         # Goal: Vaccinate >80% of population for herd immunity
         # Future implementation: Account for facility's resupply interval and storage capacity
-        num_to_vaccinate = (true_pop * 0.8) - dfCovid.loc[distr, 'NUM_VACCINATED']
-        vacc_admin_per_day = 10 * 60 * (1 / dfCovid.loc[distr, 'MIN_TO_ADMIN_VACC']) * 2 * dfGeneral.loc[distr, 'NUM_VACCINE_SITES']
+        num_to_vaccinate = (true_pop * perc_herd_immunity) - dfCovid.loc[distr, 'NUM_VACCINATED']
+        vacc_admin_per_day = site_hours * 60 * (1 / dfCovid.loc[distr, 'MIN_TO_ADMIN_VACC']) * 2 * dfGeneral.loc[distr, 'NUM_VACCINE_SITES']
         campaign_length = int(num_to_vaccinate / vacc_admin_per_day)
 
         # Factor in num of staff available
         current_num_staff = dfCovid.loc[distr, 'NUM_STAFF']
-        min_staff_needed = dfGeneral.loc[distr, 'NUM_VACCINE_SITES'] * 4
-
+        min_staff_needed = dfGeneral.loc[distr, 'NUM_VACCINE_SITES'] * staff_per_site
+        
         dfPriority = dfPriority.append({'DISTRICT': distr,'PRIORITY': priority, 'TOTAL_POP': true_pop,
                                         'POP_VACCINATED': dfCovid.loc[distr, 'NUM_VACCINATED'], 'CAMPAIGN_LENGTH': campaign_length,
                                         'ADDITIONAL_STAFF_NEED': max(0, min_staff_needed - current_num_staff)}, ignore_index = True)
@@ -163,19 +172,16 @@ class MyServer(BaseHTTPRequestHandler):
         global dfPriority
         global dfNumVaccine
         global num_vaccines
+
         priority = 5
         distributed = 0
-        # Percentage of population to aim to vaccinate depending on priority
-        # Priority = 1 --> 10% pop .... Priority = 5 --> 80%
-        target_percent = [0.1, 0.2, 0.4, 0.6, 0.8]
         dfNumVaccine = pd.DataFrame(columns = ['DISTRICT','PRIORITY','CAMPAIGN_LENGTH','NUM_VACCINE', 'POP_TO_VACC', 'ADDITIONAL_STAFF_NEED'])
-
         dfPriority = dfPriority.sort_values(by=['PRIORITY'], ascending=False)
-
+        
         # Prioritize districts with higher priority and distribute vaccines there first
         while priority > 0:
             priority_results = dfPriority.loc[dfPriority['PRIORITY'] == priority]
-            for ind in priority_results.index:
+            for ind in priority_results.index:                
                 # (Target pop to vaccinate - already vaccinated) * 2 doses per person
                 num_vax_needed = ((dfPriority.loc[ind,'TOTAL_POP'] * target_percent[priority - 1]) - dfPriority.loc[ind, 'POP_VACCINATED']) * 2
                 if (num_vaccines > 0):
@@ -205,6 +211,7 @@ class MyServer(BaseHTTPRequestHandler):
         if (self.path == "/results") :
             global dfPriority, dfNumVaccine
             dfPriority = pd.DataFrame(columns = ['DISTRICT','PRIORITY', 'TOTAL_POP', 'POP_VACCINATED', 'CAMPAIGN_LENGTH', 'ADDITIONAL_STAFF_NEED'])
+            dfPriority = dfPriority.set_index('DISTRICT')
             dfNumVaccine = pd.DataFrame(columns = ['DISTRICT','PRIORITY','CAMPAIGN_LENGTH','NUM_VACCINE', 'POP_TO_VACC', 'ADDITIONAL_STAFF_NEED'])
             # Do what you wish with file_content
             fileItem = form['covidFile']
