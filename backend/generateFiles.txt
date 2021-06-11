@@ -1,0 +1,41 @@
+    # covidFile
+    '''
+    dfsql['NUM_CASES'] = 0
+    dfsql['NUM_DEATHS'] = 0
+    dfsql['NUM_STAFF'] = 0
+    dfsql['NUM_VACCINATED'] = 0
+    dfsql['MIN_TO_ADMIN_VACC'] = 0
+    
+    
+    for ind in dfsql.index:
+        pop = dfsql.loc[ind, 'POP']
+        dfsql.loc[ind, 'NUM_CASES'] = r.randrange(1, pop)
+        dfsql.loc[ind, 'NUM_DEATHS'] = r.randrange(1, int(pop / 2))
+        dfsql.loc[ind, 'NUM_STAFF'] = r.randrange(20, 300)
+        dfsql.loc[ind, 'NUM_VACCINATED'] = r.randrange(int(pop * 0.1), int(pop * 0.8))
+        dfsql.loc[ind, 'MIN_TO_ADMIN_VACC'] = r.randrange(5, 30)
+    dfsql.drop('POP', axis=1, inplace=True)
+    print(dfsql)
+    dfsql.to_csv("covid_stats_template.csv", index = False)
+    '''
+    
+    
+    #generalFile
+    dfsql['PERCENT_POP_0-19'] = 0
+    dfsql['PERCENT_POP_20-59'] = 0
+    dfsql['PERCENT_POP_60+'] = 0
+    dfsql['BIRTH_RATES'] = 0
+    dfsql['NUM_HOUSEHOLDS'] = 0
+    dfsql['NUM_VACCINE_SITES'] = 0
+
+    for ind in dfsql.index:
+        dfsql.loc[ind, 'PERCENT_POP_0-19'] = r.randrange(20, 60) / 100.0
+        dfsql.loc[ind, 'PERCENT_POP_20-59'] = r.randrange(20, 60) / 100.0
+        dfsql.loc[ind, 'PERCENT_POP_60+'] = r.randrange(20, 60) / 100.0
+        dfsql.loc[ind, 'BIRTH_RATES'] = r.randrange(5, 1000)
+        dfsql.loc[ind, 'NUM_HOUSEHOLDS'] = r.randrange(500, 100000)
+        dfsql.loc[ind, 'NUM_VACCINE_SITES'] = r.randrange(1, 15)
+
+    print(dfsql)
+    dfsql.to_csv("general_stats_template.csv", index = False)
+    
