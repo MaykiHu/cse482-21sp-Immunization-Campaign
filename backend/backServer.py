@@ -1,15 +1,15 @@
-# Python 3 server example
 from http.server import BaseHTTPRequestHandler, HTTPServer
 import cgi
 from io import BytesIO
 import pandas as pd
-#import json probably dont need since pandas can go to json on its own
 import dbConnect as db # this is our db connect to get to our Azure sql db
 
 hostName = 'localhost'
 serverPort = 8080
+# Dictionary to get abbreviation from country. Ideally should be added to countries table in DB
 abbrevs = {"Uganda": "UG", "Kenya": "KE", "Mali": "MAL", "Zimbabwe": "ZIM", "Benin": "BE"}
 total_doses = 0
+
 site_hours = 10 # hours sites are open for
 perc_herd_immunity = 0.8
 staff_per_site = 4
@@ -28,16 +28,23 @@ dfNumVaccine = None
 dfPrevCampaigns = None
 dfData = None
 
-class MyServer(BaseHTTPRequestHandler):
+class CampaignServer(BaseHTTPRequestHandler):
     def _set_headers(self):
+        ''' Set headers to send OK response and any additional info needed '''
         self.send_response(200)
-        #self.send_header("Content-type", "text/json")
+        # Add to allow CORS with front end
         self.send_header("Access-Control-Allow-Origin", "http://localhost:3000")
         self.end_headers()
 
     def do_GET(self):
+        ''' Handle incoming GET requests
+
+            Endpoints
+            ---------
+            /countries : Return list of countries for the frontend dropdown
+            /{Country}-districts : Return list of all districts for specified country
+        '''
         self._set_headers()
-        # TODO: Create some kind of switch statement / method for each endpoint.
 
         if ("-districts" in self.path):
             countryDrop = self.path.split('-')[0].replace("/", "").strip()
@@ -53,6 +60,8 @@ class MyServer(BaseHTTPRequestHandler):
             self.wfile.write(bytes(dfjson, "utf-8"))
 
     def query_data(self):
+        ''' Populate dataframes before using in algorithm '''
+
         # Get number of people under age 15 from database
         query1 = ('SELECT ft_level2 AS DISTRICTS, SUM(fi_pop_under15) AS UNDER15 FROM {country}_ADMIN_AREAS GROUP BY ft_level2'
                   .format(country=abbrevs[country]))
@@ -66,13 +75,16 @@ class MyServer(BaseHTTPRequestHandler):
         dfData = dfPop_under15.join(dfTotal_pop) # DISTRICTS, UNDER15, POPULATION
 
     def priority_score(self, distr):
+        ''' Assign a priority score to a district based on risk '''
+
         global dfPriority
         risk = 0
         # If no data of pop_under15, use 0 not realistic but would need complete data or guess percentage
         pop_under15 = 0 if dfData.loc[distr, 'UNDER15'] else dfData.loc[distr, 'UNDER15']
 
         estimated_pop = dfData.loc[distr, 'POPULATION']
-        true_pop = estimated_pop + (estimated_pop * 0.15) # Add 15% to estimated to account for error
+        # Add 15% to estimated to account for error
+        true_pop = estimated_pop + (estimated_pop * 0.15) 
         campaign_held = distr in dfPrevCampaigns.index.values
         percent_vaccinated = dfCovid.loc[distr, 'NUM_VACCINATED'] / true_pop
         percent_cases = dfCovid.loc[distr, 'NUM_CASES'] / true_pop
@@ -101,8 +113,8 @@ class MyServer(BaseHTTPRequestHandler):
                 risk_score += 4 # 40-60% vaccinated
             elif percent_vaccinated < 0.4 and percent_vaccinated > 0.2:
                 risk_score += 6 # 20-40% vaccinated
-            else: # <20% vaccinated
-                risk_score += 8
+            else: 
+                risk_score += 8 # <20% vaccinated
 
             # Population susceptibility: High population of 60+ year olds means higher risk
             # Highest weight 3x multiplier
@@ -169,6 +181,8 @@ class MyServer(BaseHTTPRequestHandler):
                                         'ADDITIONAL_STAFF_NEED': max(0, min_staff_needed - current_num_staff)}, ignore_index = True)
 
     def alloc_vaccines(self):
+        ''' Allocate vaccines based on district priority ''' 
+        
         global dfPriority
         global dfNumVaccine
         global num_vaccines
@@ -202,6 +216,12 @@ class MyServer(BaseHTTPRequestHandler):
 
 
     def do_POST(self) :
+        ''' Handle incoming POST requests
+
+            Endpoints
+            ---------
+            /results : read input files, process in algorithm, return results json
+        '''
         self._set_headers()
         form = cgi.FieldStorage(
             fp=self.rfile,
@@ -213,25 +233,17 @@ class MyServer(BaseHTTPRequestHandler):
             dfPriority = pd.DataFrame(columns = ['DISTRICT','PRIORITY', 'TOTAL_POP', 'POP_VACCINATED', 'CAMPAIGN_LENGTH', 'ADDITIONAL_STAFF_NEED'])
             dfPriority = dfPriority.set_index('DISTRICT')
             dfNumVaccine = pd.DataFrame(columns = ['DISTRICT','PRIORITY','CAMPAIGN_LENGTH','NUM_VACCINE', 'POP_TO_VACC', 'ADDITIONAL_STAFF_NEED'])
-            # Do what you wish with file_content
+            
+            # Grab covid stats file
             fileItem = form['covidFile']
-            # name of file
-            covidName = fileItem.filename
-            # file data as bytes
-            #print(fileItem.value)
             global dfCovid
             # set index so we can lookup rows by district
             dfCovid = pd.read_csv(BytesIO(fileItem.value)).set_index('DISTRICTS')
-            #print(dfCovid)
-            #print()
 
             # Grab general stats file
             fileItem = form['generalFile']
-            generalName = fileItem.filename
             global dfGeneral
             dfGeneral = pd.read_csv(BytesIO(fileItem.value)).set_index('DISTRICTS')
-            #print(dfGeneral)
-            #print()
 
             # Grab stats from input (country, num vaccines, prev campaigns)
             fileItem = form['stateFile']
@@ -248,33 +260,25 @@ class MyServer(BaseHTTPRequestHandler):
             prev_campaigns_list = dfState[0][2]
             dfPrevCampaigns = pd.DataFrame(prev_campaigns_list, columns=['DISTRICTS', 'FINISHED'])
             dfPrevCampaigns = dfPrevCampaigns.set_index('DISTRICTS') #Lookup by district
-            retString = "" + covidName + "," + stateName
-            #print(dfPrevCampaigns)
-            #print()
-            #print(retString)
-            # self.wfile.write(bytes(retString, "utf-8"))
 
             # Calculate priority for each district
             self.query_data() # get data from db
             for district in dfData.index.values:
                 self.priority_score(district)
 
-            #print()
-            #print(dfPriority)
             self.alloc_vaccines() # allocate vaccine to districts
-            #print(dfNumVaccine)
+            
             # Convert results to json
-
             dfjson = dfNumVaccine.to_json(indent=4, orient='index')
-            print(dfjson)
             self.wfile.write(bytes(dfjson, "utf-8"))
-            pd.DataFrame.empty  # empty prev. saved data used in JSON
+            # empty prev. saved data before next request
+            pd.DataFrame.empty  
 
 
 
 if __name__ == "__main__":
     db.connect()
-    webServer = HTTPServer((hostName, serverPort), MyServer)
+    webServer = HTTPServer((hostName, serverPort), CampaignServer)
     print("Server started http://%s:%s" % (hostName, serverPort))
 
     try:
