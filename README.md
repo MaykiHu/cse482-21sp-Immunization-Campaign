@@ -30,4 +30,4 @@ Back End
 1. Using terminal run backserver.py
     - If in '-Immunization-Campaign' folder: run "python .\backend\backserver.py" 
 2. Open up 'localhost:8080'
-3. To see list of districts, open up 'localhost:8080/districts'
+3. To see list of countries, open up 'localhost:8080/countries'
