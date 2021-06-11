@@ -6,6 +6,7 @@ If first time opening, please do this in your terminal:
 1. cd to website folder. In terminal, run "npm install"
     -This step is to install all needed libraries/packages
     from React and only needs to be done ONCE, the first time
+    
 Opening the Project (subsequent steps):
 1. Run backServer.py (see Back End for any additional installations if cannot run)
 2. In terminal, cd to website folder (if not already in it)
