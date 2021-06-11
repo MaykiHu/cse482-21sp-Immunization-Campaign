@@ -8,7 +8,7 @@ If first time opening, please do this in your terminal:
     from React and only needs to be done ONCE, the first time
     
 Opening the Project (subsequent steps):
-1. Run backServer.py (see Back End for any additional installations if cannot run)
+1. Run backServer.py in backend folder (see Back End for any additional steps if cannot run)
 2. In terminal, cd to website folder (if not already in it)
 3. In terminal, run "npm start"
     -This will automatically start and popup the website shortly on localhost:3000
@@ -25,6 +25,7 @@ Back End
     - python modules: pyodbc, pandas, sqlalchemy
     - ODBC Driver for SQL Server
 - Need to be added to azure server to run project
+- Need to add constants/permissions to dbConnect.py (in backend folder)
 
 1. Using terminal run backserver.py
     - If in '-Immunization-Campaign' folder: run "python .\backend\backserver.py" 
